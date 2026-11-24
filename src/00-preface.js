@@ -56,6 +56,8 @@ const ICON_PATHS = {
   'arrow-right': ['M3 8h9M8.5 3.5L13 8l-4.5 4.5'],
   info: ['M8 14A6 6 0 108 2a6 6 0 000 12Z', 'M8 7.2v3.6M8 5.2h.01'],
   folder: ['M2.5 4.5h4l1 1.5h6v6.5h-11z'],
+  checklist: ['M2.5 4h2v2h-2zM6.5 4.6H13', 'M2.5 9h2v2h-2zM6.5 9.6H13'],
+  'arrow-left': ['M13 8H4M8.5 3.5L4 8l4.5 4.5'],
   rocket: ['M6 10l-2 3 3-1.2', 'M10 10l2 3-3-1.2', 'M8 2.5c2.8 1.3 4 3.7 4 6.4L8 12 4 8.9C4 6.2 5.2 3.8 8 2.5Z', 'M6.4 6.6a2 2 0 112.8 2.8'],
   sun: ['M8 11a3 3 0 100-6 3 3 0 000 6Z', 'M8 1.5v1.4M8 13.1v1.4M1.5 8h1.4M13.1 8h1.4M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1'],
 }
@@ -343,6 +345,55 @@ function createDraft() {
     access: 'public',
     customerRequests: false,
     multiAssignee: false,
+  }
+}
+
+/* ----------------------------------------------------------------- tasks */
+
+/** localStorage key holding tasks (separate from spaces so a space edit never rewrites them). */
+const TASKS_KEY = 'dsh.task-spaces.tasks.v1'
+
+/** Priority scale used by the task editor and list rows. */
+const TASK_PRIORITIES = [
+  { id: 'none', name: '无', color: null },
+  { id: 'low', name: '低', color: '#5b8def' },
+  { id: 'medium', name: '中', color: '#e0a03c' },
+  { id: 'high', name: '高', color: '#e0783c' },
+  { id: 'urgent', name: '紧急', color: '#d65252' },
+]
+
+/** Look up a priority definition (falls back to 无). */
+function priorityOf(id) {
+  return TASK_PRIORITIES.find((entry) => entry.id === id) ?? TASK_PRIORITIES[0]
+}
+
+/** Read persisted tasks, tolerating absent or damaged storage. */
+function loadTasks() {
+  try {
+    const raw = window.localStorage.getItem(TASKS_KEY)
+    if (raw === null) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? parsed.filter((task) => task && typeof task.title === 'string') : []
+  } catch {
+    return []
+  }
+}
+
+/** Persist tasks; failures are non-fatal. */
+function saveTasks(tasks) {
+  try {
+    window.localStorage.setItem(TASKS_KEY, JSON.stringify(tasks))
+  } catch {
+    /* private mode or quota: the in-memory list still works for this session */
+  }
+}
+
+/** Stable id for a new task. */
+function newTaskId() {
+  try {
+    return window.crypto.randomUUID()
+  } catch {
+    return `task-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`
   }
 }
 

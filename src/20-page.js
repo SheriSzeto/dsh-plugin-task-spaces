@@ -7,7 +7,7 @@
  */
 
 /** One space card with its overflow menu. */
-function SpaceCard({ space, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, onDuplicate }) {
+function SpaceCard({ space, taskCount, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, onDuplicate, onOpen }) {
   const category = WORK_CATEGORIES.find((entry) => entry.id === space.workCategory)
   const accessLabel = space.access === 'private' ? '私有空间' : '组织内公开'
   const menuEntries = [
@@ -16,7 +16,18 @@ function SpaceCard({ space, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, 
   ]
   return h(
     'article',
-    { className: 'ts-card', 'data-flash': flash ? 'true' : 'false' },
+    {
+      className: 'ts-card',
+      'data-flash': flash ? 'true' : 'false',
+      onClick: onOpen,
+      onKeyDown: (event) => {
+        if (event.key === 'Enter' || event.key === ' ') onOpen()
+      },
+      role: 'link',
+      tabIndex: 0,
+      'aria-label': `打开空间 ${space.name}`,
+      style: { cursor: 'pointer' },
+    },
     h(
       'div',
       { className: 'ts-card-head' },
@@ -47,7 +58,10 @@ function SpaceCard({ space, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, 
             'aria-label': '空间操作',
             'aria-haspopup': 'menu',
             'aria-expanded': menuOpen ? 'true' : 'false',
-            onClick: onMenuOpen,
+            onClick: (event) => {
+              event.stopPropagation()
+              onMenuOpen()
+            },
           },
           h(Icon, { name: 'more', size: 16 }),
         ),
@@ -99,7 +113,7 @@ function SpaceCard({ space, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, 
         'span',
         { className: 'ts-card-foot-left' },
         h(Icon, { name: 'check-circle', size: 13 }),
-        `0 个任务 · ${enabledModules(space).length} 个模块`,
+        `${taskCount} 个任务 · ${enabledModules(space).length} 个模块`,
       ),
       h('span', null, space.multiAssignee ? '多人处理人' : '单人处理人'),
     ),
@@ -114,6 +128,8 @@ function enabledModules(space) {
 /** The spaces workspace page. */
 function TaskSpacesPage() {
   const [spaces, setSpaces] = React.useState(() => loadSpaces())
+  const [tasks, setTasks] = React.useState(() => loadTasks())
+  const [openSpaceId, setOpenSpaceId] = React.useState(null)
   const [filter, setFilter] = React.useState('all')
   const [wizard, setWizard] = React.useState(null)
   const [flashId, setFlashId] = React.useState(null)
@@ -128,6 +144,59 @@ function TaskSpacesPage() {
     window.clearTimeout(toastTimer.current)
     toastTimer.current = window.setTimeout(() => setToast(null), 3200)
   }, [])
+
+  /** Persist the task list (state + localStorage). */
+  const commitTasks = React.useCallback((next) => {
+    setTasks(next)
+    saveTasks(next)
+  }, [])
+
+  /** Create a task inside one space. */
+  const createTask = React.useCallback(
+    (spaceId, fields) => {
+      const now = Date.now()
+      const task = {
+        id: newTaskId(),
+        spaceId,
+        title: fields.title,
+        description: fields.description,
+        type: fields.type,
+        status: fields.status,
+        priority: fields.priority,
+        labels: [...fields.labels],
+        createdAt: now,
+        updatedAt: now,
+      }
+      commitTasks([task, ...tasks])
+      showToast(`任务「${task.title}」已创建。`)
+    },
+    [tasks, commitTasks, showToast],
+  )
+
+  /** Apply an edit to one task. */
+  const updateTask = React.useCallback(
+    (taskId, fields) => {
+      commitTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...fields, labels: [...fields.labels], updatedAt: Date.now() } : task)))
+      showToast('任务已更新。')
+    },
+    [tasks, commitTasks, showToast],
+  )
+
+  /** Delete one task. */
+  const deleteTask = React.useCallback(
+    (taskId) => {
+      commitTasks(tasks.filter((task) => task.id !== taskId))
+      showToast('任务已删除。')
+    },
+    [tasks, commitTasks, showToast],
+  )
+
+  /** Task count per space, for the list cards. */
+  const taskCounts = React.useMemo(() => {
+    const counts = new Map()
+    for (const task of tasks) counts.set(task.spaceId, (counts.get(task.spaceId) ?? 0) + 1)
+    return counts
+  }, [tasks])
 
   React.useEffect(
     () => () => {
@@ -198,9 +267,10 @@ function TaskSpacesPage() {
     const next = spaces.filter((space) => space.id !== confirmSpace.id)
     setSpaces(next)
     saveSpaces(next)
+    commitTasks(tasks.filter((task) => task.spaceId !== confirmSpace.id))
     setConfirmSpace(null)
-    showToast(`已删除空间「${confirmSpace.name}」。`)
-  }, [confirmSpace, spaces, showToast])
+    showToast(`已删除空间「${confirmSpace.name}」及其任务。`)
+  }, [confirmSpace, spaces, showToast, tasks, commitTasks])
 
   React.useEffect(() => {
     if (flashId === null) return
@@ -214,6 +284,18 @@ function TaskSpacesPage() {
     private: spaces.filter((space) => space.access === 'private').length,
   }
   const visible = spaces.filter((space) => (filter === 'all' ? true : filter === 'private' ? space.access === 'private' : space.access !== 'private'))
+
+  const openSpace = spaces.find((space) => space.id === openSpaceId)
+  if (openSpace !== undefined) {
+    return h(SpaceView, {
+      space: openSpace,
+      tasks,
+      onBack: () => setOpenSpaceId(null),
+      onCreate: (fields) => createTask(openSpace.id, fields),
+      onUpdate: updateTask,
+      onDeleteTask: deleteTask,
+    })
+  }
 
   return h(
     'div',
@@ -262,6 +344,7 @@ function TaskSpacesPage() {
                 h(SpaceCard, {
                   key: space.id,
                   space,
+                  taskCount: taskCounts.get(space.id) ?? 0,
                   flash: flashId === space.id,
                   menuOpen: menuId === space.id,
                   onMenuOpen: () => setMenuId(menuId === space.id ? null : space.id),
@@ -271,6 +354,7 @@ function TaskSpacesPage() {
                     setConfirmSpace(space)
                   },
                   onDuplicate: () => startDuplicate(space),
+                  onOpen: () => setOpenSpaceId(space.id),
                 }),
               ),
             ),
@@ -292,7 +376,7 @@ function TaskSpacesPage() {
             { 'data-dsh-task-spaces': '' },
             h(ConfirmOverlay, {
               title: `删除空间「${confirmSpace.name}」？`,
-              desc: '此操作无法撤销。空间及其数据会被永久删除。',
+              desc: '此操作无法撤销。空间及其任务会被永久删除。',
               confirmLabel: '删除空间',
               onCancel: () => setConfirmSpace(null),
               onConfirm: deleteSpace,

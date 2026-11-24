@@ -91,7 +91,13 @@ function Menu({ items }) {
   }, [items])
   return h(
     'div',
-    { className: 'ts-menu', ref, role: 'menu' },
+    {
+      className: 'ts-menu',
+      ref,
+      role: 'menu',
+      // Keep menu clicks from reaching a card-level "open space" handler.
+      onClick: (event) => event.stopPropagation(),
+    },
     items.entries.map((entry) =>
       h(
         'button',
