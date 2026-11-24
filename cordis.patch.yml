@@ -1,0 +1,9 @@
+# Bundle patch layer for the task-spaces plugin.
+#
+# The row is a bare plugin by package name: the node half (exports ".") runs in
+# the host process, and the `dsh.client` declaration in package.json makes the
+# browser half (exports "./client", served through the client module graph) load
+# in the Web GUI as a sidebar panel plus its main-column page.
+- insert:
+    - id: task-spaces
+      name: 'dsh-plugin-task-spaces'

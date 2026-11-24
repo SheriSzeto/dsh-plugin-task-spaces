@@ -1,0 +1,69 @@
+{
+  "name": "dsh-plugin-task-spaces",
+  "version": "0.1.0",
+  "description": "Task spaces for the DeepSeek Harness Web GUI: a five-step create-space wizard, preset workflows, and a spaces workspace panel.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": {
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "engines": {
+      "dsh": ">=0.2.0-rc.1"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "files": [
+    "lib",
+    "src",
+    "scripts",
+    "cordis.patch.yml",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "watch": "node scripts/build.mjs --watch",
+    "verify": "node scripts/release.mjs --check",
+    "release": "node scripts/release.mjs"
+  },
+  "license": "MIT",
+  "keywords": [
+    "dsh-plugin",
+    "deepseek-harness",
+    "dsh",
+    "task-spaces",
+    "workspace",
+    "wizard",
+    "client-plugin"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SheriSzeto/dsh-plugin-task-spaces.git"
+  },
+  "homepage": "https://github.com/SheriSzeto/dsh-plugin-task-spaces#readme",
+  "bugs": {
+    "url": "https://github.com/SheriSzeto/dsh-plugin-task-spaces/issues"
+  },
+  "author": "SheriSzeto"
+}

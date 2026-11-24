@@ -1,0 +1,8 @@
+# 复制到 awesome-dsh-plugin 仓库的 data/plugins/SheriSzeto__dsh-plugin-task-spaces.yml
+url: https://github.com/SheriSzeto/dsh-plugin-task-spaces
+name: SheriSzeto/dsh-plugin-task-spaces
+category: ui
+description:
+  en: 'Task spaces for the DSH Web GUI: a five-step create-space wizard with preset workflows and per-space modules.'
+  zh: 'DSH Web GUI 的任务空间：五步创建向导，支持预设工作流与按空间配置的功能模块。'
+icon: https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/icon-180.png

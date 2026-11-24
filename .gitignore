@@ -1,0 +1,7 @@
+# Install artifacts
+node_modules/
+dist/
+*.tgz
+
+# OS noise
+.DS_Store
