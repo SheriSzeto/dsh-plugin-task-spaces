@@ -5,7 +5,7 @@
 「创建任务空间」做成 DeepSeek Harness Web GUI 的客户端插件：
 侧边栏多一个 **任务空间** 面板，里面是一套五步创建向导 + 空间工作台页面，字段和配置项覆盖团队、专项、产品线、长期计划等典型用法。
 
-![空间列表](assets/task-spaces-list.png)
+![空间列表](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-spaces-list.png)
 
 ## 功能
 
@@ -13,9 +13,9 @@
 - **空间工作台**：空间卡片展示图标、名称、任务 ID 前缀（如 `ENG`）、工作类型、访问权限、工作流状态、标签、任务类型与功能模块；支持 `全部 / 公开 / 私有` 筛选、卡片菜单（复制设置新建 / 删除空间）和删除二次确认。
 - **五步创建向导**（`创建空间` 弹窗）：
 
-  ![工作类型](assets/create-space-step1.png)
-  ![任务与模块](assets/create-space-modules.png)
-  ![从已有空间复制](assets/create-space-copy.png)
+  ![工作类型](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-step1.png)
+  ![任务与模块](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-modules.png)
+  ![从已有空间复制](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-copy.png)
 
   | 步骤 | 内容 |
   | --- | --- |
@@ -28,9 +28,9 @@
 - **反馈**：创建成功有 toast、新卡片闪光高亮；标识符冲突、名称为空等校验就地提示。
 - **持久化**：空间数据存在浏览器同源 `localStorage` 的 `dsh.task-spaces.v1` 键里，刷新页面、重启 Harness 都还在。
 
-![空状态](assets/empty-state.png)
+![空状态](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/empty-state.png)
 
-![空间列表](assets/task-spaces-list.png)
+![空间列表](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-spaces-list.png)
 
 ## 安装
 
@@ -187,4 +187,4 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 - 多用户/成员/权限只是展示，没有真实的组织与鉴权。
 - 状态排序目前不支持拖拽（文案保留了相关说明），可继续补 dnd。
 
-![确认摘要](assets/create-space-summary.png)
+![确认摘要](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-summary.png)
