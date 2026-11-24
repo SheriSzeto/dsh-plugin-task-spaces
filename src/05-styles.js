@@ -681,6 +681,38 @@ const TASK_SPACES_CSS = `
   border: 1px dashed var(--ts-border-strong); background: var(--ts-soft);
 }
 
+/* ------------------------------------------------------------ board drag */
+
+.ts-board-card[draggable="true"] { cursor: grab; }
+.ts-board-card[draggable="true"]:active { cursor: grabbing; }
+.ts-board-card[data-dragging="true"] { opacity: 0.45; }
+.ts-board-col[data-drop="true"] {
+  border-color: var(--ts-accent-border);
+  background: var(--ts-accent-soft);
+}
+.ts-board-col[data-drop="true"] .ts-board-empty { border-color: var(--ts-accent-border); }
+
+/* -------------------------------------------------------------- filters */
+
+.ts-filterbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ts-search {
+  display: inline-flex; align-items: center; gap: 7px; height: 30px; padding: 0 10px;
+  border-radius: var(--ts-radius-sm); border: 0.5px solid var(--ts-border-strong);
+  background: var(--dsw-alias-bg-base); color: var(--dsw-alias-label-secondary);
+  min-width: 220px;
+}
+.ts-search:focus-within { border-color: var(--ts-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ts-accent) 16%, transparent); }
+.ts-search input {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; background: transparent;
+  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 12.5px;
+}
+.ts-search input:focus { outline: none; }
+.ts-search input::placeholder { color: var(--dsw-alias-label-secondary); opacity: 0.8; }
+.ts-filterbar .ts-filter-select {
+  width: auto; min-width: 108px; flex: 0 0 auto; height: 30px; padding: 0 8px; font-size: 12.5px;
+}
+.ts-filter-clear { height: 30px; padding: 0 10px; font-size: 12px; }
+
 /* ------------------------------------------------------------ task editor */
 
 .ts-task-dialog {

@@ -11,7 +11,8 @@
 
 - **侧边栏入口**：`sidebar.panellist` 注册「任务空间」图标；点击切到 `main` 面板的独立页面，和「插件」「会话」互不干扰。
 - **空间工作台**：空间卡片展示图标、名称、任务 ID 前缀（如 `ENG`）、工作类型、访问权限、工作流状态、标签、任务类型与功能模块；支持 `全部 / 公开 / 私有` 筛选、卡片菜单（复制设置新建 / 删除空间）和删除二次确认。
-- **任务管理**：点击空间卡片进入该空间的工作台，可以 **添加任务**（标题、描述、任务类型、状态、优先级、标签），用 **列表 / 看板** 两种视图查看，看板按空间自己的工作流状态分列；点任务可编辑（含改状态、优先级、标签）或删除。空间卡片上实时显示任务数，删除空间会连带删除其任务。
+- **任务管理**：点击空间卡片进入该空间的工作台，可以 **添加任务**（标题、描述、任务类型、状态、优先级、标签），用 **列表 / 看板** 两种视图查看，看板按空间自己的工作流状态分列；**看板支持拖拽卡片改状态**（拖到目标列松手即可，列会高亮），点任务可编辑（含改状态、优先级、标签）或删除。空间卡片上实时显示任务数，删除空间会连带删除其任务。
+- **任务筛选**：工作台顶部可按 **关键词（标题/描述）、任务类型、优先级、标签** 组合筛选，列表与看板同时生效，计数显示为 `命中 / 总数`，一键「清除筛选」。
 - **五步创建向导**（`创建空间` 弹窗）：
 
   ![工作类型](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-step1.png)
@@ -34,6 +35,8 @@
 ![空间列表](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-spaces-list.png)
 
 ![空间看板](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/space-board.png)
+
+![任务筛选](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/space-filters.png)
 
 ![新建任务](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-editor.png)
 
@@ -191,6 +194,6 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 
 - 空间与任务都是前端原型数据（localStorage），还没有 Host 半侧的持久化，也没有和 DSH 的 Session/Agent 执行打通；下一步可以给 `lib/index.js` 加 host 服务、用 storage 域落盘，并把任务派给 Agent 执行。
 - 多用户/成员/权限只是展示，没有真实的组织与鉴权；任务还没有指派人、评论、附件。
-- 看板暂不支持拖拽改状态（在任务编辑弹窗里改），状态排序也还没做 dnd。
+- 看板拖拽只支持「换状态」，同列内的手动排序还没做；状态本身也还不能在空间设置里改名/排序。
 
 ![确认摘要](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-summary.png)

@@ -173,11 +173,18 @@ function TaskSpacesPage() {
     [tasks, commitTasks, showToast],
   )
 
-  /** Apply an edit to one task. */
+  /** Apply a partial edit to one task (the board's drag move sends only `status`). */
   const updateTask = React.useCallback(
     (taskId, fields) => {
-      commitTasks(tasks.map((task) => (task.id === taskId ? { ...task, ...fields, labels: [...fields.labels], updatedAt: Date.now() } : task)))
-      showToast('任务已更新。')
+      commitTasks(
+        tasks.map((task) => {
+          if (task.id !== taskId) return task
+          const next = { ...task, ...fields, updatedAt: Date.now() }
+          if (fields.labels !== undefined) next.labels = [...fields.labels]
+          return next
+        }),
+      )
+      showToast(fields.status !== undefined ? `任务已移动到「${fields.status}」。` : '任务已更新。')
     },
     [tasks, commitTasks, showToast],
   )
@@ -287,14 +294,21 @@ function TaskSpacesPage() {
 
   const openSpace = spaces.find((space) => space.id === openSpaceId)
   if (openSpace !== undefined) {
-    return h(SpaceView, {
-      space: openSpace,
-      tasks,
-      onBack: () => setOpenSpaceId(null),
-      onCreate: (fields) => createTask(openSpace.id, fields),
-      onUpdate: updateTask,
-      onDeleteTask: deleteTask,
-    })
+    return h(
+      React.Fragment,
+      null,
+      h(SpaceView, {
+        space: openSpace,
+        tasks,
+        onBack: () => setOpenSpaceId(null),
+        onCreate: (fields) => createTask(openSpace.id, fields),
+        onUpdate: updateTask,
+        onDeleteTask: deleteTask,
+      }),
+      toast === null
+        ? null
+        : createPortal(h('div', { 'data-dsh-task-spaces': '' }, h(Toast, { toast })), document.body),
+    )
   }
 
   return h(

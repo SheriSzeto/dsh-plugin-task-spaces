@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-task-spaces",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Task spaces for the DeepSeek Harness Web GUI: a five-step create-space wizard, preset workflows, and a spaces workspace panel.",
   "type": "module",
   "main": "lib/index.js",

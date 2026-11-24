@@ -28,8 +28,13 @@ function SpaceBadge({ icon, size = 'md' }) {
 }
 
 /** One button with the kit's visual kinds. */
-function Btn({ kind = 'ghost', icon, children, ...rest }) {
-  return h('button', { type: 'button', className: 'ts-btn', 'data-kind': kind, ...rest }, icon === undefined ? null : h(Icon, { name: icon, size: 14 }), children)
+function Btn({ kind = 'ghost', icon, className, children, ...rest }) {
+  return h(
+    'button',
+    { type: 'button', className: cx('ts-btn', className), 'data-kind': kind, ...rest },
+    icon === undefined ? null : h(Icon, { name: icon, size: 14 }),
+    children,
+  )
 }
 
 /** Labelled switch row used for modules and preferences. */
