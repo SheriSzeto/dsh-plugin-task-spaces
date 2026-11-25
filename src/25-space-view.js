@@ -17,6 +17,28 @@ function taskTypeName(id) {
   return found === undefined ? id : found.name
 }
 
+/** One avatar for a person or agent name. */
+function Avatar({ name }) {
+  return h(
+    'span',
+    { className: 'ts-avatar', style: { background: assigneeColor(name) }, title: name, 'aria-label': name },
+    assigneeInitials(name),
+  )
+}
+
+/** A compact avatar stack (max 2 + overflow counter). */
+function AvatarStack({ names }) {
+  if (names.length === 0) return h('span', { className: 'ts-assignee-missing' }, '未分配')
+  const shown = names.slice(0, 2)
+  const extra = names.length - shown.length
+  return h(
+    'span',
+    { className: 'ts-avatars', title: names.join('、') },
+    shown.map((name) => h(Avatar, { key: name, name })),
+    extra > 0 ? h('span', { className: 'ts-avatar-more' }, h(Avatar, { name: `+${extra}` })) : null,
+  )
+}
+
 /** One task row in the list view. */
 function TaskRow({ space, task, onOpen }) {
   const status = resolveStatus(space, task.status)
@@ -39,6 +61,10 @@ function TaskRow({ space, task, onOpen }) {
     h(
       'span',
       { className: 'ts-task-side' },
+      h(AvatarStack, { names: task.assignees }),
+      task.attachments.length > 0
+        ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 12 }), String(task.attachments.length))
+        : null,
       priority.color === null ? null : h(
         'span',
         { className: 'ts-priority', 'data-priority': priority.id },
@@ -79,6 +105,16 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
       ),
       task.labels.map((label) => h('span', { key: label, className: 'ts-label-chip' }, label)),
     ),
+    task.assignees.length > 0 || task.attachments.length > 0
+      ? h(
+          'span',
+          { className: 'ts-board-card-foot' },
+          h(AvatarStack, { names: task.assignees }),
+          task.attachments.length > 0
+            ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 11 }), String(task.attachments.length))
+            : h('span', null),
+        )
+      : null,
   )
 }
 
@@ -91,7 +127,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
  * @param props.onSubmit - receives the edited field set.
  * @param props.onDelete - delete the edited task (edit mode only).
  */
-function TaskEditor({ space, task, initialStatus, onClose, onSubmit, onDelete }) {
+function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete }) {
   const isEdit = task !== undefined
   const [title, setTitle] = React.useState(isEdit ? task.title : '')
   const [description, setDescription] = React.useState(isEdit ? task.description : '')
@@ -102,6 +138,51 @@ function TaskEditor({ space, task, initialStatus, onClose, onSubmit, onDelete })
   const [priority, setPriority] = React.useState(isEdit ? task.priority : 'none')
   const [labels, setLabels] = React.useState(isEdit ? [...task.labels] : [])
   const [titleTouched, setTitleTouched] = React.useState(false)
+  const [assignees, setAssignees] = React.useState(isEdit ? [...task.assignees] : [])
+  const [assigneeDraft, setAssigneeDraft] = React.useState('')
+  const [attachments, setAttachments] = React.useState(isEdit ? [...task.attachments] : [])
+  const [attachError, setAttachError] = React.useState('')
+  const fileInputRef = React.useRef(null)
+
+  /** Add one assignee (single-assignee spaces replace the current one). */
+  const addAssignee = (raw) => {
+    const name = raw.trim()
+    if (name.length === 0) return
+    setAssignees((current) => {
+      if (current.includes(name)) return current
+      return space.multiAssignee === true ? [...current, name] : [name]
+    })
+    setAssigneeDraft('')
+  }
+
+  /** Read picked files into data-URL attachments, enforcing the local-storage budget. */
+  const pickFiles = async (fileList) => {
+    setAttachError('')
+    const files = Array.from(fileList ?? [])
+    if (files.length === 0) return
+    const next = [...attachments]
+    for (const file of files) {
+      if (next.length >= ATTACHMENT_MAX_COUNT) {
+        setAttachError(`最多添加 ${ATTACHMENT_MAX_COUNT} 个附件。`)
+        break
+      }
+      if (file.size > ATTACHMENT_MAX_BYTES) {
+        setAttachError(`「${file.name}」超过 ${fileSizeText(ATTACHMENT_MAX_BYTES)}，换一个小一点的文件。`)
+        continue
+      }
+      try {
+        const dataUrl = await readFileAsDataUrl(file)
+        next.push({ id: newTaskId(), name: file.name, size: file.size, type: file.type, dataUrl })
+      } catch {
+        setAttachError(`读取「${file.name}」失败。`)
+      }
+    }
+    setAttachments(next)
+    if (fileInputRef.current !== null) fileInputRef.current.value = ''
+  }
+
+  /** Remove one attachment. */
+  const removeAttachment = (id) => setAttachments((current) => current.filter((file) => file.id !== id))
 
   const typeChoices = ['task', ...space.taskTypes.filter((id) => id !== 'task')]
   const submitEnabled = title.trim().length > 0
@@ -123,6 +204,8 @@ function TaskEditor({ space, task, initialStatus, onClose, onSubmit, onDelete })
       status,
       priority,
       labels,
+      assignees,
+      attachments,
     })
   }
 
@@ -182,6 +265,56 @@ function TaskEditor({ space, task, initialStatus, onClose, onSubmit, onDelete })
               value: description,
               onChange: (event) => setDescription(event.target.value),
             }),
+          ),
+          h(
+            'div',
+            { className: 'ts-field' },
+            h(
+              'span',
+              { className: 'ts-field-label' },
+              h('span', null, '处理人'),
+              h('span', { className: 'ts-field-hint' }, space.multiAssignee === true ? '可多人' : '单人'),
+            ),
+            h(
+              'div',
+              { className: 'ts-assignee-box' },
+              assignees.map((name) =>
+                h(
+                  'span',
+                  { key: name, className: 'ts-assignee-chip' },
+                  h(Avatar, { name }),
+                  name,
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      'aria-label': `移除处理人 ${name}`,
+                      onClick: () => setAssignees((current) => current.filter((entry) => entry !== name)),
+                    },
+                    h(Icon, { name: 'close', size: 10, strokeWidth: 1.8 }),
+                  ),
+                ),
+              ),
+              h('input', {
+                list: 'ts-assignee-options',
+                placeholder: assignees.length === 0 ? '输入成员或 Agent 名称，回车添加' : '继续添加…',
+                value: assigneeDraft,
+                'aria-label': '添加处理人',
+                onChange: (event) => setAssigneeDraft(event.target.value),
+                onKeyDown: (event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault()
+                    addAssignee(assigneeDraft)
+                  }
+                },
+              }),
+              h(
+                'datalist',
+                { id: 'ts-assignee-options' },
+                (suggestions ?? assignees).map((name) => h('option', { key: name, value: name })),
+              ),
+            ),
+            h('span', { className: 'ts-field-hint' }, space.multiAssignee === true ? '可以指派给多人；输入后会记住，下次可直接选。' : '该空间为单人处理人，添加新处理人会替换原来的。'),
           ),
           h(
             'div',
@@ -246,6 +379,70 @@ function TaskEditor({ space, task, initialStatus, onClose, onSubmit, onDelete })
                   ),
             ),
           ),
+          h(
+            'div',
+            { className: 'ts-field' },
+            h(
+              'span',
+              { className: 'ts-field-label' },
+              h('span', null, '附件'),
+              h('span', { className: 'ts-field-hint' }, `最多 ${ATTACHMENT_MAX_COUNT} 个，单个不超过 ${fileSizeText(ATTACHMENT_MAX_BYTES)}`),
+            ),
+            h(
+              'div',
+              { className: 'ts-attach-row' },
+              h('input', {
+                ref: fileInputRef,
+                type: 'file',
+                multiple: true,
+                className: 'ts-file-input',
+                onChange: (event) => pickFiles(event.target.files),
+              }),
+              h(Btn, { kind: 'outline', icon: 'paperclip', onClick: () => fileInputRef.current?.click() }, '添加附件'),
+              attachments.length > 0 ? h('span', { className: 'ts-field-hint' }, `已添加 ${attachments.length} 个`) : null,
+            ),
+            attachments.length === 0
+              ? h('span', { className: 'ts-field-hint' }, '附件保存在浏览器本地（原型数据），刷新后仍在。')
+              : h(
+                  'div',
+                  { className: 'ts-attach-list' },
+                  attachments.map((file) =>
+                    h(
+                      'div',
+                      { key: file.id, className: 'ts-attach-item' },
+                      h(
+                        'span',
+                        { className: 'ts-attach-thumb' },
+                        isImageAttachment(file.type)
+                          ? h('img', { src: file.dataUrl, alt: file.name })
+                          : h(Icon, { name: 'paperclip', size: 15 }),
+                      ),
+                      h(
+                        'span',
+                        { className: 'ts-attach-text' },
+                        h('span', { className: 'ts-attach-name', title: file.name }, file.name),
+                        h('span', { className: 'ts-attach-size' }, fileSizeText(file.size)),
+                      ),
+                      h(
+                        'a',
+                        { className: 'ts-attach-open', href: file.dataUrl, download: file.name, onClick: (event) => event.stopPropagation() },
+                        '打开',
+                      ),
+                      h(
+                        'button',
+                        {
+                          type: 'button',
+                          className: 'ts-icon-btn',
+                          'aria-label': `移除附件 ${file.name}`,
+                          onClick: () => removeAttachment(file.id),
+                        },
+                        h(Icon, { name: 'close', size: 13 }),
+                      ),
+                    ),
+                  ),
+                ),
+            attachError.length > 0 ? h('span', { className: 'ts-attach-error' }, attachError) : null,
+          ),
         ),
         h(
           'div',
@@ -280,6 +477,7 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
   const [typeFilter, setTypeFilter] = React.useState('all')
   const [priorityFilter, setPriorityFilter] = React.useState('all')
   const [labelFilter, setLabelFilter] = React.useState('all')
+  const [assigneeFilter, setAssigneeFilter] = React.useState('all')
   const [draggingId, setDraggingId] = React.useState(null)
   const [dropStatus, setDropStatus] = React.useState(null)
 
@@ -287,14 +485,18 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
     .filter((task) => task.spaceId === space.id)
     .sort((left, right) => right.createdAt - left.createdAt)
   const typeChoices = ['task', ...space.taskTypes.filter((id) => id !== 'task')]
+  const assigneeOptions = Array.from(new Set(spaceTasks.flatMap((task) => task.assignees))).sort((left, right) => left.localeCompare(right, 'zh-Hans-CN'))
 
-  const filtersActive = query.trim().length > 0 || typeFilter !== 'all' || priorityFilter !== 'all' || labelFilter !== 'all'
+  const filtersActive =
+    query.trim().length > 0 || typeFilter !== 'all' || priorityFilter !== 'all' || labelFilter !== 'all' || assigneeFilter !== 'all'
   const visibleTasks = spaceTasks.filter((task) => {
     const needle = query.trim().toLowerCase()
     if (needle.length > 0 && !`${task.title}\n${task.description}`.toLowerCase().includes(needle)) return false
     if (typeFilter !== 'all' && task.type !== typeFilter) return false
     if (priorityFilter !== 'all' && task.priority !== priorityFilter) return false
     if (labelFilter !== 'all' && !task.labels.includes(labelFilter)) return false
+    if (assigneeFilter === 'unassigned' && task.assignees.length > 0) return false
+    if (assigneeFilter !== 'all' && assigneeFilter !== 'unassigned' && !task.assignees.includes(assigneeFilter)) return false
     return true
   })
 
@@ -303,6 +505,7 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
     setTypeFilter('all')
     setPriorityFilter('all')
     setLabelFilter('all')
+    setAssigneeFilter('all')
   }
 
   const openCreate = (status) => setEditor({ mode: 'create', status })
@@ -442,6 +645,13 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
               space.labels.map((label) => h('option', { key: label, value: label }, label)),
             )
           : null,
+        h(
+          'select',
+          { className: 'ts-select ts-filter-select', value: assigneeFilter, 'aria-label': '按处理人筛选', onChange: (event) => setAssigneeFilter(event.target.value) },
+          h('option', { value: 'all' }, '全部处理人'),
+          h('option', { value: 'unassigned' }, '未分配'),
+          assigneeOptions.map((name) => h('option', { key: name, value: name }, name)),
+        ),
         filtersActive
           ? h(Btn, { kind: 'ghost', icon: 'close', className: 'ts-filter-clear', onClick: clearFilters }, '清除筛选')
           : null,
@@ -537,6 +747,7 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
           space,
           task: editor.mode === 'edit' ? editor.task : undefined,
           initialStatus: editor.mode === 'create' ? editor.status : undefined,
+          suggestions: assigneeOptions,
           onClose: () => setEditor(null),
           onSubmit: submitEditor,
           onDelete:

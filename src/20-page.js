@@ -164,6 +164,8 @@ function TaskSpacesPage() {
         status: fields.status,
         priority: fields.priority,
         labels: [...fields.labels],
+        assignees: [...(fields.assignees ?? [])],
+        attachments: fields.attachments ?? [],
         createdAt: now,
         updatedAt: now,
       }
@@ -176,6 +178,7 @@ function TaskSpacesPage() {
   /** Apply a partial edit to one task (the board's drag move sends only `status`). */
   const updateTask = React.useCallback(
     (taskId, fields) => {
+      const previous = tasks.find((task) => task.id === taskId)
       commitTasks(
         tasks.map((task) => {
           if (task.id !== taskId) return task
@@ -184,7 +187,8 @@ function TaskSpacesPage() {
           return next
         }),
       )
-      showToast(fields.status !== undefined ? `任务已移动到「${fields.status}」。` : '任务已更新。')
+      const moved = fields.status !== undefined && previous !== undefined && previous.status !== fields.status
+      showToast(moved ? `任务已移动到「${fields.status}」。` : '任务已更新。')
     },
     [tasks, commitTasks, showToast],
   )

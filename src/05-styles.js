@@ -605,6 +605,72 @@ const TASK_SPACES_CSS = `
 .ts-confirm-desc { margin: 8px 0 0; color: var(--dsw-alias-label-secondary); font-size: 13px; line-height: 1.6; }
 .ts-confirm-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 20px; }
 
+/* --------------------------------------------------- assignees + attachments */
+
+.ts-avatars { display: inline-flex; align-items: center; }
+.ts-avatar {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; color: #fff;
+  font-size: 10.5px; font-weight: 600; line-height: 1; letter-spacing: 0.02em;
+  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, #fff 28%, transparent);
+}
+.ts-avatars .ts-avatar + .ts-avatar { margin-left: -6px; border: 1.5px solid var(--dsw-alias-bg-layer-1); }
+.ts-avatar-more { margin-left: -6px; }
+.ts-avatar-more .ts-avatar { background: var(--ts-hover-strong); color: var(--dsw-alias-label-secondary); }
+.ts-assignee-missing { color: var(--dsw-alias-label-secondary); font-size: 11.5px; opacity: 0.8; }
+
+.ts-attach-count {
+  display: inline-flex; align-items: center; gap: 3px; color: var(--dsw-alias-label-secondary); font-size: 11px;
+}
+
+.ts-assignee-box {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; min-height: 34px; padding: 4px 8px;
+  border-radius: var(--ts-radius-sm); border: 0.5px solid var(--ts-border-strong);
+  background: var(--dsw-alias-bg-base);
+}
+.ts-assignee-box:focus-within { border-color: var(--ts-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ts-accent) 16%, transparent); }
+.ts-assignee-box input {
+  flex: 1; min-width: 110px; height: 24px; padding: 0; border: 0; background: transparent;
+  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 12.5px;
+}
+.ts-assignee-box input:focus { outline: none; }
+.ts-assignee-chip {
+  display: inline-flex; align-items: center; gap: 5px; height: 24px; padding: 0 6px 0 3px;
+  border-radius: 999px; font-size: 12px; color: var(--dsw-alias-label-primary);
+  background: var(--ts-soft); border: 0.5px solid var(--ts-border);
+}
+.ts-assignee-chip button {
+  appearance: none; border: 0; background: transparent; color: inherit; padding: 0;
+  display: inline-flex; cursor: pointer; opacity: 0.6; border-radius: 50%;
+}
+.ts-assignee-chip button:hover { opacity: 1; }
+
+.ts-attach-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ts-attach-list { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.ts-attach-item {
+  display: flex; align-items: center; gap: 9px; padding: 7px 9px;
+  border-radius: 9px; border: 0.5px solid var(--ts-border); background: var(--dsw-alias-bg-base);
+}
+.ts-attach-thumb {
+  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+  width: 34px; height: 34px; border-radius: 7px; overflow: hidden;
+  background: var(--ts-soft); color: var(--dsw-alias-label-secondary);
+}
+.ts-attach-thumb img { width: 100%; height: 100%; object-fit: cover; }
+.ts-attach-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.ts-attach-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ts-attach-size { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.ts-attach-open {
+  appearance: none; border: 0; background: transparent; color: var(--dsw-alias-label-secondary);
+  padding: 0 4px; font-family: inherit; font-size: 12px; cursor: pointer;
+}
+.ts-attach-open:hover { color: var(--dsw-alias-label-primary); }
+.ts-file-input { display: none; }
+.ts-attach-error { color: var(--dsw-alias-state-error-primary); font-size: 12px; margin-top: 6px; }
+
+.ts-board-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ts-board-card-foot .ts-attach-count { gap: 3px; }
+
 /* -------------------------------------------------------- space workspace */
 
 .ts-space-head { display: flex; align-items: flex-start; gap: 14px; }
@@ -716,16 +782,16 @@ const TASK_SPACES_CSS = `
 /* ------------------------------------------------------------ task editor */
 
 .ts-task-dialog {
-  position: relative; width: min(600px, 92vw); max-height: 88vh; overflow: auto;
+  position: relative; display: flex; flex-direction: column; width: min(600px, 92vw); max-height: 88vh; overflow: hidden;
   padding: 22px; border-radius: 18px; background: var(--dsw-alias-bg-layer-1);
   border: 0.5px solid var(--ts-border-strong);
   box-shadow: 0 32px 80px color-mix(in srgb, #000 42%, transparent);
   animation: ts-pop-in 170ms cubic-bezier(0.2, 0.9, 0.3, 1) 1;
 }
-.ts-task-dialog-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+.ts-task-dialog-head { flex: 0 0 auto; display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
 .ts-task-dialog-title { margin: 0; font-size: 17px; font-weight: 650; }
 .ts-task-dialog-sub { margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 12px; }
-.ts-task-form { display: flex; flex-direction: column; gap: 14px; }
+.ts-task-form { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding-right: 2px; }
 .ts-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .ts-textarea {
   width: 100%; min-height: 76px; resize: vertical; padding: 9px 11px;
@@ -747,7 +813,7 @@ const TASK_SPACES_CSS = `
   background: var(--ts-accent-soft);
   border-color: var(--ts-accent-border);
 }
-.ts-task-dialog-foot { display: flex; align-items: center; gap: 8px; margin-top: 20px; }
+.ts-task-dialog-foot { flex: 0 0 auto; display: flex; align-items: center; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 0.5px solid var(--ts-border); }
 
 /* -------------------------------------------------------------- responsive */
 
