@@ -9,7 +9,6 @@
 /** One space card with its overflow menu. */
 function SpaceCard({ space, taskCount, flash, menuOpen, onMenuOpen, onMenuClose, onDelete, onDuplicate, onOpen }) {
   const category = WORK_CATEGORIES.find((entry) => entry.id === space.workCategory)
-  const accessLabel = space.access === 'private' ? '私有空间' : '组织内公开'
   const menuEntries = [
     { id: 'duplicate', label: '复制设置新建', icon: 'copy', onSelect: onDuplicate },
     { id: 'delete', label: '删除空间', icon: 'trash', danger: true, onSelect: onDelete },
@@ -44,7 +43,7 @@ function SpaceCard({ space, taskCount, flash, menuOpen, onMenuOpen, onMenuClose,
         h(
           'div',
           { className: 'ts-card-sub' },
-          `${category === undefined ? '自定义空间' : category.name} · ${accessLabel} · 创建于 ${relativeTime(space.createdAt)}`,
+          `${category === undefined ? '自定义空间' : category.name} · 创建于 ${relativeTime(space.createdAt)}`,
         ),
       ),
       h(
@@ -115,7 +114,6 @@ function SpaceCard({ space, taskCount, flash, menuOpen, onMenuOpen, onMenuClose,
         h(Icon, { name: 'check-circle', size: 13 }),
         `${taskCount} 个任务 · ${enabledModules(space).length} 个模块`,
       ),
-      h('span', null, space.multiAssignee ? '多人处理人' : '单人处理人'),
     ),
   )
 }
@@ -132,7 +130,6 @@ function TaskSpacesPage() {
   const [loading, setLoading] = React.useState(true)
   const [hostMode, setHostMode] = React.useState(false)
   const [openSpaceId, setOpenSpaceId] = React.useState(null)
-  const [filter, setFilter] = React.useState('all')
   const [wizard, setWizard] = React.useState(null)
   const [flashId, setFlashId] = React.useState(null)
   const [menuId, setMenuId] = React.useState(null)
@@ -172,10 +169,12 @@ function TaskSpacesPage() {
         await hostSaveState(localSpaces, localTasks)
         return
       }
-      setSpaces(state.spaces)
+      const normalized = normalizeSpaces(state.spaces)
+      setSpaces(normalized)
       setTasks(state.tasks)
       setHostMode(true)
       setLoading(false)
+      if (JSON.stringify(normalized) !== JSON.stringify(state.spaces)) await hostSaveState(normalized, state.tasks)
     })()
     return () => {
       alive = false
@@ -317,12 +316,9 @@ function TaskSpacesPage() {
       draft.workCategory = space.workCategory
       draft.modules = { ...space.modules }
       draft.taskTypes = [...space.taskTypes]
-      draft.sprintMode = space.sprintMode
       draft.statuses = space.statuses.map((status) => ({ ...status }))
       draft.labels = [...space.labels]
       draft.icon = { ...space.icon }
-      draft.access = space.access
-      draft.multiAssignee = space.multiAssignee
       setMenuId(null)
       setWizard({ key: Date.now(), draft })
     },
@@ -339,14 +335,10 @@ function TaskSpacesPage() {
         identifier: draft.identifier.trim().toUpperCase(),
         icon: { emoji: draft.icon.emoji, color: draft.icon.color },
         workCategory: draft.workCategory,
-        access: draft.access,
         taskTypes: [...draft.taskTypes],
-        modules: { tasks: true, views: draft.modules.views === true, sprints: draft.modules.sprints === true, projects: draft.modules.projects === true, triage: draft.modules.triage === true },
-        sprintMode: draft.sprintMode,
+        modules: { tasks: true, views: draft.modules.views === true },
         statuses: draft.statuses.filter((status) => status.name.trim().length > 0).map((status) => ({ name: status.name.trim(), color: status.color, default: status.default === true })),
         labels: draft.labels.filter((label) => label.length > 0),
-        customerRequests: draft.customerRequests === true,
-        multiAssignee: draft.multiAssignee === true,
         createdAt,
       }
       commitState([space, ...spaces], tasks)
@@ -376,12 +368,7 @@ function TaskSpacesPage() {
     return () => window.clearTimeout(timer)
   }, [flashId])
 
-  const counts = {
-    all: spaces.length,
-    public: spaces.filter((space) => space.access !== 'private').length,
-    private: spaces.filter((space) => space.access === 'private').length,
-  }
-  const visible = spaces.filter((space) => (filter === 'all' ? true : filter === 'private' ? space.access === 'private' : space.access !== 'private'))
+  const visible = spaces
 
   if (loading) {
     return h(
@@ -439,7 +426,7 @@ function TaskSpacesPage() {
           h(
             'p',
             { className: 'ts-sub' },
-            '按团队、专项或长期计划组织工作。每个空间拥有自己的任务类型、工作流、标签和访问范围，创建过程分五步完成。',
+            '个人的 AI Native 工作流：空间是你的工作领域，任务是你推进的事，可以指定执行者（我或 Agent），进展和附件都留在任务里。',
           ),
         ),
         h(Btn, { kind: 'primary', icon: 'plus', onClick: startCreate }, '创建空间'),
@@ -447,24 +434,12 @@ function TaskSpacesPage() {
       h(
         'div',
         { className: 'ts-toolbar' },
-        h(Segmented, {
-          label: '空间筛选',
-          value: filter,
-          onChange: setFilter,
-          items: [
-            { value: 'all', label: `全部 ${counts.all}` },
-            { value: 'public', label: `公开 ${counts.public}` },
-            { value: 'private', label: `私有 ${counts.private}` },
-          ],
-        }),
-        h('span', { className: 'ts-count' }, visible.length === 0 ? '还没有匹配的空间' : `共 ${visible.length} 个空间`),
+        h('span', { className: 'ts-count' }, visible.length === 0 ? '还没有空间' : `共 ${visible.length} 个空间`),
         h('span', { className: 'ts-chip', title: hostMode ? '数据保存在本机 DSH home 目录' : 'Host 不可用，退回浏览器本地存储' }, hostMode ? 'Host 持久化' : '本地模式'),
       ),
       spaces.length === 0
         ? h(EmptyState, { onCreate: startCreate })
-        : visible.length === 0
-          ? h('div', { className: 'ts-inline-note' }, h(Icon, { name: 'info', size: 14 }), '当前筛选下没有空间，切换筛选条件看看。')
-          : h(
+        : h(
               'div',
               { className: 'ts-grid' },
               visible.map((space) =>

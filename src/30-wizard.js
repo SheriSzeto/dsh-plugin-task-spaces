@@ -2,13 +2,13 @@
  * Five-step create-space wizard.
  *
  * Steps: work category -> task types & modules -> name/identifier/icon ->
- * workflow preset (or copy) with editable statuses/labels -> access & confirm.
+ * workflow preset (or copy) with editable statuses/labels -> confirmation.
  * Copy and structure follow the create-space dialog spec; the demo
  * persists the resulting space into the spaces page above.
  */
 
 /** Short captions under each rail entry. */
-const STEP_CAPTIONS = ['空间主要做什么', '任务类型、功能模块', '名称、标识符、图标', '状态与标签', '可见范围与创建']
+const STEP_CAPTIONS = ['空间主要做什么', '任务类型、功能模块', '名称、标识符、图标', '状态与标签', '检查并创建']
 
 /** Validate one step; returns an error message or null. */
 function validateStep(step, draft, spaces) {
@@ -121,7 +121,7 @@ function StepCategory({ draft, update }) {
       'div',
       { className: 'ts-inline-note' },
       h(Icon, { name: 'sparkle', size: 14 }),
-      h('span', null, `已根据「${workCategory(draft.workCategory).name}」预选合适的任务类型；首次在此空间创建 Agent 时，默认使用「${draft.workCategory === 'software_development' ? '代码开发' : '日常办公'}」类型。`),
+      h('span', null, `已根据「${workCategory(draft.workCategory).name}」预选任务类型。空间里的每个任务都可以指定执行者（我或 Agent）。`),
     ),
   )
 }
@@ -232,32 +232,6 @@ function StepModules({ draft, update }) {
                 }),
           ),
         ),
-        draft.modules.sprints === true
-          ? h(
-              'div',
-              { className: 'ts-sprint-modes' },
-              SPRINT_MODES.map((mode) =>
-                h(
-                  'button',
-                  {
-                    key: mode.id,
-                    type: 'button',
-                    role: 'radio',
-                    className: 'ts-radio-card',
-                    'aria-checked': draft.sprintMode === mode.id,
-                    onClick: () => update({ sprintMode: mode.id }),
-                  },
-                  h('input', { type: 'radio', className: 'ts-radio', readOnly: true, checked: draft.sprintMode === mode.id, tabIndex: -1 }),
-                  h(
-                    'span',
-                    null,
-                    h('span', { className: 'ts-radio-card-name' }, mode.name),
-                    h('span', { className: 'ts-radio-card-desc' }, mode.desc),
-                  ),
-                ),
-              ),
-            )
-          : null,
       ),
     ),
   )
@@ -351,7 +325,7 @@ function StepDetails({ draft, update, spaces }) {
           update(patch)
         },
       }),
-      nameError !== null ? h('span', { className: 'ts-field-error' }, nameError) : h('span', { className: 'ts-field-hint' }, '空间名称应该让团队一眼知道它承载什么工作。'),
+      nameError !== null ? h('span', { className: 'ts-field-error' }, nameError) : h('span', { className: 'ts-field-hint' }, '空间名称应该让你一眼知道它承载什么工作。'),
     ),
     h(
       'div',
@@ -392,7 +366,7 @@ function StepDetails({ draft, update, spaces }) {
       ),
       identifierError !== null
         ? h('span', { className: 'ts-field-error' }, identifierError)
-        : h('span', { className: 'ts-field-hint' }, '用于任务 ID（例如 ENG-123）。2-7 个字母或数字，组织内唯一。'),
+        : h('span', { className: 'ts-field-hint' }, '用于任务 ID（例如 CODE-123）。2-7 个字母或数字，同一机器上唯一。'),
     ),
     h(
       'div',
@@ -400,7 +374,7 @@ function StepDetails({ draft, update, spaces }) {
       h(SpaceBadge, { icon: draft.icon, size: 'sm' }),
       h('span', { className: 'ts-preview-name' }, name.trim().length > 0 ? name.trim() : '空间名称'),
       h('span', { className: 'ts-id-badge' }, upper.length >= 2 ? upper : 'ENG'),
-      h('span', null, draft.access === 'private' ? '私有' : '组织内公开'),
+      h('span', null, '个人空间'),
       h('span', { style: { marginLeft: 'auto', opacity: 0.7 } }, '侧边栏预览'),
     ),
   )
@@ -636,7 +610,7 @@ function StepWorkflow({ draft, update, spaces }) {
           '从已有空间复制',
         ),
       ),
-      h('span', { className: 'ts-block-hint' }, draft.method === 'template' ? '先选择预设，再微调状态和标签。' : '复制源空间的工作流状态与标签。不会复制成员。'),
+      h('span', { className: 'ts-block-hint' }, draft.method === 'template' ? '先选择预设，再微调状态和标签。' : '复制源空间的工作流状态与标签。'),
     ),
     draft.method === 'template'
       ? h(
@@ -687,8 +661,8 @@ function StepWorkflow({ draft, update, spaces }) {
   )
 }
 
-/** Step 5: access, optional flags and the confirm summary. */
-function StepAccess({ draft, update, spaces }) {
+/** Step 5: confirm the draft (no permissions: this is a personal workspace). */
+function StepConfirm({ draft, spaces }) {
   const category = workCategory(draft.workCategory)
   const typeNames = draft.taskTypes.map((id) => (TASK_TYPE_POOL.find((entry) => entry.id === id) ?? { name: id }).name)
   const moduleNames = MODULE_DEFS.filter((module) => draft.modules[module.id] === true).map((module) => module.name)
@@ -696,76 +670,10 @@ function StepAccess({ draft, update, spaces }) {
   const creation =
     draft.method === 'copy'
       ? `从「${copySource === undefined ? '已有空间' : copySource.name}」复制`
-      : `通过模版创建（${WORKFLOW_PRESETS.find((preset) => preset.id === draft.preset)?.name ?? '入门'}）`
+      : `通过模版创建（${WORKFLOW_PRESETS.find((preset) => preset.id === draft.preset)?.name ?? '轻量待办'}）`
   return h(
     'div',
     { className: 'ts-stack' },
-    h(
-      'section',
-      { className: 'ts-block' },
-      h('div', { className: 'ts-block-head' }, h('span', { className: 'ts-block-title' }, '空间访问权限')),
-      h(
-        'div',
-        { className: 'ts-access-grid' },
-        h(
-          'button',
-          { type: 'button', role: 'radio', className: 'ts-access-card', 'aria-checked': draft.access === 'public', onClick: () => update({ access: 'public' }) },
-          h(Icon, { name: 'globe', size: 16 }),
-          h(
-            'span',
-            { className: 'ts-access-body' },
-            h('span', { className: 'ts-access-name' }, '组织内公开'),
-            h('span', { className: 'ts-access-hint' }, '组织中的任何人都可以找到并加入此空间。适合研发、产品、市场等常规协作场景。'),
-          ),
-          h('span', { className: 'ts-access-check' }, h(Icon, { name: 'check', size: 11, strokeWidth: 2 })),
-        ),
-        h(
-          'button',
-          { type: 'button', role: 'radio', className: 'ts-access-card', 'aria-checked': draft.access === 'private', onClick: () => update({ access: 'private' }) },
-          h(Icon, { name: 'lock', size: 16 }),
-          h(
-            'span',
-            { className: 'ts-access-body' },
-            h('span', { className: 'ts-access-name' }, '私有'),
-            h('span', { className: 'ts-access-hint' }, '仅空间成员和组织所有者可见。适合权限敏感或范围较小的工作，例如客户交付与未公开专项。'),
-          ),
-          h('span', { className: 'ts-access-check' }, h(Icon, { name: 'check', size: 11, strokeWidth: 2 })),
-        ),
-      ),
-    ),
-    h(
-      'section',
-      { className: 'ts-block' },
-      h('div', { className: 'ts-block-head' }, h('span', { className: 'ts-block-title' }, '可选模块与设置')),
-      h(
-        'div',
-        { className: 'ts-module-list' },
-        h(
-          'div',
-          { className: 'ts-module' },
-          h('span', { className: 'ts-module-icon' }, h(Icon, { name: 'search', size: 15 })),
-          h(
-            'div',
-            { className: 'ts-module-body' },
-            h('div', { className: 'ts-module-name' }, '客户请求'),
-            h('div', { className: 'ts-module-desc' }, '按空间开关和管理客户请求，创建后仍可在空间设置里调整。'),
-          ),
-          h(Switch, { label: '启用客户请求', checked: draft.customerRequests === true, onChange: (value) => update({ customerRequests: value }) }),
-        ),
-        h(
-          'div',
-          { className: 'ts-module' },
-          h('span', { className: 'ts-module-icon' }, h(Icon, { name: 'users', size: 15 })),
-          h(
-            'div',
-            { className: 'ts-module-body' },
-            h('div', { className: 'ts-module-name' }, '多人处理人'),
-            h('div', { className: 'ts-module-desc' }, '默认仍是单人；开启后，这个空间里的任务可以有多名人员处理人。'),
-          ),
-          h(Switch, { label: '启用多人处理人', checked: draft.multiAssignee === true, onChange: (value) => update({ multiAssignee: value }) }),
-        ),
-      ),
-    ),
     h(
       'div',
       { className: 'ts-summary' },
@@ -777,7 +685,7 @@ function StepAccess({ draft, update, spaces }) {
           'div',
           null,
           h('div', { className: 'ts-summary-name' }, draft.name.trim().length > 0 ? draft.name.trim() : '未命名空间'),
-          h('div', { className: 'ts-summary-sub' }, `${category.name} · ${draft.identifier.trim().length > 0 ? draft.identifier.trim().toUpperCase() : 'ENG'} · ${creation}`),
+          h('div', { className: 'ts-summary-sub' }, `${category.name} · ${draft.identifier.trim().length > 0 ? draft.identifier.trim().toUpperCase() : 'CODE'} · ${creation}`),
         ),
       ),
       h(
@@ -807,15 +715,15 @@ function StepAccess({ draft, update, spaces }) {
       h(
         'div',
         { className: 'ts-summary-row' },
-        h('span', { className: 'ts-summary-key' }, '访问权限'),
-        h('div', { className: 'ts-summary-val' }, draft.access === 'private' ? '私有 · 仅空间成员可见' : '组织内公开 · 成员可自行加入'),
+        h('span', { className: 'ts-summary-key' }, '执行方式'),
+        h('div', { className: 'ts-summary-val' }, '任务可以指定执行者（我或 Agent），数据保存在本机'),
       ),
-      h(
-        'div',
-        { className: 'ts-summary-row' },
-        h('span', { className: 'ts-summary-key' }, '处理人'),
-        h('div', { className: 'ts-summary-val' }, draft.multiAssignee ? '多人处理人' : '单人处理人'),
-      ),
+    ),
+    h(
+      'div',
+      { className: 'ts-inline-note' },
+      h(Icon, { name: 'info', size: 14 }),
+      h('span', null, '创建后随时可以在空间里修改任务类型、工作流和标签。'),
     ),
   )
 }
@@ -843,7 +751,7 @@ function SpaceWizard({ spaces, initialDraft, onCancel, onSubmit }) {
     h(StepModules, { draft, update }),
     h(StepDetails, { draft, update, spaces }),
     h(StepWorkflow, { draft, update, spaces }),
-    h(StepAccess, { draft, update, spaces }),
+    h(StepConfirm, { draft, spaces }),
   ]
 
   const stepRight = () => {

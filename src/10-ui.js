@@ -144,7 +144,7 @@ function EmptyState({ onCreate }) {
     h(
       'p',
       { className: 'ts-empty-desc' },
-      '空间按团队、专项或长期计划组织工作。每个空间拥有自己的任务类型、工作流、标签和访问范围，创建过程分五步完成。',
+      '空间是你的个人工作领域：每个空间拥有自己的任务类型、工作流和标签，任务可以交给 Agent 执行，创建过程分五步完成。',
     ),
     h(Btn, { kind: 'primary', icon: 'plus', onClick: onCreate }, '创建空间'),
   )

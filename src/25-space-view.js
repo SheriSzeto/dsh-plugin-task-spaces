@@ -28,7 +28,7 @@ function Avatar({ name }) {
 
 /** A compact avatar stack (max 2 + overflow counter). */
 function AvatarStack({ names }) {
-  if (names.length === 0) return h('span', { className: 'ts-assignee-missing' }, '未分配')
+  if (names.length === 0) return h('span', { className: 'ts-assignee-missing' }, '未指定执行者')
   const shown = names.slice(0, 2)
   const extra = names.length - shown.length
   return h(
@@ -66,7 +66,7 @@ function TaskRow({ space, task, onOpen }) {
         ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 12 }), String(task.attachments.length))
         : null,
       task.comments.length > 0
-        ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条评论` }, h(Icon, { name: 'comment', size: 12 }), String(task.comments.length))
+        ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条进展` }, h(Icon, { name: 'comment', size: 12 }), String(task.comments.length))
         : null,
       priority.color === null ? null : h(
         'span',
@@ -117,7 +117,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
             'span',
             { className: 'ts-board-card-foot-right' },
             task.comments.length > 0
-              ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条评论` }, h(Icon, { name: 'comment', size: 11 }), String(task.comments.length))
+              ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条进展` }, h(Icon, { name: 'comment', size: 11 }), String(task.comments.length))
               : null,
             task.attachments.length > 0
               ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 11 }), String(task.attachments.length))
@@ -186,10 +186,8 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
   const addAssignee = (raw) => {
     const name = raw.trim()
     if (name.length === 0) return
-    setAssignees((current) => {
-      if (current.includes(name)) return current
-      return space.multiAssignee === true ? [...current, name] : [name]
-    })
+    // Personal workspace: one executor slot per task, so a new name replaces the old one.
+    setAssignees((current) => (current.includes(name) ? current : [name]))
     setAssigneeDraft('')
   }
 
@@ -330,8 +328,8 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
             h(
               'span',
               { className: 'ts-field-label' },
-              h('span', null, '处理人'),
-              h('span', { className: 'ts-field-hint' }, space.multiAssignee === true ? '可多人' : '单人'),
+              h('span', null, '执行者'),
+              h('span', { className: 'ts-field-hint' }, '我 / Agent'),
             ),
             h(
               'div',
@@ -346,7 +344,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                     'button',
                     {
                       type: 'button',
-                      'aria-label': `移除处理人 ${name}`,
+                      'aria-label': `移除执行者 ${name}`,
                       onClick: () => setAssignees((current) => current.filter((entry) => entry !== name)),
                     },
                     h(Icon, { name: 'close', size: 10, strokeWidth: 1.8 }),
@@ -355,9 +353,9 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
               ),
               h('input', {
                 list: 'ts-assignee-options',
-                placeholder: assignees.length === 0 ? '输入成员或 Agent 名称，回车添加' : '继续添加…',
+                placeholder: assignees.length === 0 ? '输入执行者名称（我 / Agent），回车添加' : '继续添加…',
                 value: assigneeDraft,
-                'aria-label': '添加处理人',
+                'aria-label': '添加执行者',
                 onChange: (event) => setAssigneeDraft(event.target.value),
                 onKeyDown: (event) => {
                   if (event.key === 'Enter') {
@@ -372,7 +370,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                 (suggestions ?? assignees).map((name) => h('option', { key: name, value: name })),
               ),
             ),
-            h('span', { className: 'ts-field-hint' }, space.multiAssignee === true ? '可以指派给多人；输入后会记住，下次可直接选。' : '该空间为单人处理人，添加新处理人会替换原来的。'),
+            h('span', { className: 'ts-field-hint' }, '单个执行者：添加新执行者会替换原来的；输入过的名字会被记住。'),
           ),
           h(
             'div',
@@ -519,11 +517,11 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                 h(
                   'span',
                   { className: 'ts-field-label' },
-                  h('span', null, '评论'),
-                  h('span', { className: 'ts-field-hint' }, commentCount === 0 ? '还没有评论' : `${commentCount} 条`),
+                  h('span', null, '进展记录'),
+                  h('span', { className: 'ts-field-hint' }, commentCount === 0 ? '还没有记录' : `${commentCount} 条`),
                 ),
                 commentCount === 0
-                  ? h('span', { className: 'ts-comment-empty' }, '写下第一条评论，让处理过程和结论留在任务里。')
+                  ? h('span', { className: 'ts-comment-empty' }, '记录第一条进展：做了什么、卡在哪、结论是什么。')
                   : h(
                       'div',
                       { className: 'ts-comment-list' },
@@ -570,17 +568,17 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                     h('input', {
                       className: 'ts-comment-author-input',
                       value: commentAuthor,
-                      placeholder: '你的名字',
-                      'aria-label': '评论人',
+                      placeholder: '我 / Agent 名称',
+                      'aria-label': '记录人',
                       onChange: (event) => setCommentAuthor(event.target.value),
                     }),
                     h('span', { className: 'ts-field-hint' }, '会记住，下次自动填'),
                   ),
                   h('textarea', {
                     className: 'ts-comment-input',
-                    placeholder: '写下评论…（⌘/Ctrl + Enter 发表）',
+                    placeholder: '记录进展…（⌘/Ctrl + Enter 保存）',
                     value: commentBody,
-                    'aria-label': '评论内容',
+                    'aria-label': '进展内容',
                     onChange: (event) => setCommentBody(event.target.value),
                     onKeyDown: (event) => {
                       if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
@@ -592,7 +590,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                   h(
                     'div',
                     { className: 'ts-comment-actions' },
-                    h(Btn, { kind: 'primary', disabled: commentBody.trim().length === 0, onClick: submitComment }, '发表评论'),
+                    h(Btn, { kind: 'primary', disabled: commentBody.trim().length === 0, onClick: submitComment }, '记录进展'),
                   ),
                 ),
               )
@@ -716,7 +714,6 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
             { className: 'ts-space-title' },
             space.name,
             h('span', { className: 'ts-id-badge' }, space.identifier),
-            h('span', { className: 'ts-chip' }, space.access === 'private' ? '私有' : '组织内公开'),
           ),
           h(
             'div',
@@ -803,8 +800,8 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
           : null,
         h(
           'select',
-          { className: 'ts-select ts-filter-select', value: assigneeFilter, 'aria-label': '按处理人筛选', onChange: (event) => setAssigneeFilter(event.target.value) },
-          h('option', { value: 'all' }, '全部处理人'),
+          { className: 'ts-select ts-filter-select', value: assigneeFilter, 'aria-label': '按执行者筛选', onChange: (event) => setAssigneeFilter(event.target.value) },
+          h('option', { value: 'all' }, '全部执行者'),
           h('option', { value: 'unassigned' }, '未分配'),
           assigneeOptions.map((name) => h('option', { key: name, value: name }, name)),
         ),

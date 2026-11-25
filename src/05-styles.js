@@ -230,17 +230,6 @@ const TASK_SPACES_CSS = `
 }
 .ts-switch[aria-checked="true"] .ts-switch-thumb { transform: translateX(16px); }
 
-.ts-radio {
-  appearance: none; flex: 0 0 auto; width: 16px; height: 16px; margin: 0;
-  border-radius: 50%; border: 1.5px solid var(--ts-border-strong); background: transparent;
-  cursor: pointer; position: relative;
-}
-.ts-radio:checked { border-color: var(--ts-accent); }
-.ts-radio:checked::after {
-  content: ""; position: absolute; inset: 2.5px; border-radius: 50%;
-  background: var(--ts-accent);
-}
-
 /* --------------------------------------------------------- overlay + shell */
 
 .ts-overlay { position: fixed; inset: 0; z-index: 1200; display: flex; align-items: center; justify-content: center; padding: 32px; }
@@ -397,19 +386,6 @@ const TASK_SPACES_CSS = `
 }
 .ts-inline-note svg { flex: 0 0 auto; margin-top: 2px; opacity: 0.8; }
 
-.ts-sprint-modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 12px 14px; background: color-mix(in srgb, var(--dsw-alias-label-primary) 3%, transparent); }
-.ts-radio-card {
-  display: flex; align-items: flex-start; gap: 9px; padding: 10px 11px; text-align: left;
-  border-radius: 10px; border: 0.5px solid var(--ts-border); background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 12.5px; cursor: pointer;
-}
-.ts-radio-card[aria-checked="true"] {
-  border-color: var(--ts-accent-border);
-  background: var(--ts-accent-soft);
-}
-.ts-radio-card-name { display: block; font-weight: 550; line-height: 1.4; }
-.ts-radio-card-desc { display: block; margin-top: 2px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.45; }
-
 /* -------------------------------------------------------------- icon edit */
 
 .ts-icon-editor {
@@ -546,26 +522,7 @@ const TASK_SPACES_CSS = `
 }
 .ts-add-inline button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-/* ------------------------------------------------------------ access + sum */
-
-.ts-access-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.ts-access-card {
-  display: flex; align-items: flex-start; gap: 10px; padding: 13px 14px; text-align: left;
-  border-radius: 12px; border: 0.5px solid var(--ts-border); background: var(--dsw-alias-bg-base);
-  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 13px; cursor: pointer;
-}
-.ts-access-card[aria-checked="true"] {
-  border-color: var(--ts-accent-border);
-  background: var(--ts-accent-soft);
-}
-.ts-access-body { flex: 1; min-width: 0; }
-.ts-access-name { display: flex; align-items: center; gap: 7px; font-weight: 600; }
-.ts-access-hint { display: block; margin-top: 3px; color: var(--dsw-alias-label-secondary); font-size: 11.5px; line-height: 1.5; }
-.ts-access-check {
-  flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
-  width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--ts-border-strong); color: transparent;
-}
-.ts-access-card[aria-checked="true"] .ts-access-check { border-color: transparent; color: var(--dsw-alias-bg-base); background: var(--ts-accent); }
+/* ------------------------------------------------------------- summary */
 
 .ts-summary {
   display: flex; flex-direction: column; gap: 0; border-radius: 14px;
@@ -871,7 +828,7 @@ const TASK_SPACES_CSS = `
   .ts-content-head { padding: 18px 20px 10px; }
   .ts-content-body { padding: 4px 20px 18px; }
   .ts-footer { padding: 12px 20px; }
-  .ts-cat-grid, .ts-checkcards, .ts-preset-grid, .ts-access-grid, .ts-split, .ts-sprint-modes, .ts-form-row { grid-template-columns: 1fr; }
+  .ts-cat-grid, .ts-checkcards, .ts-preset-grid, .ts-form-row { grid-template-columns: 1fr; }
   .ts-board { grid-auto-columns: minmax(220px, 80vw); }
 }
 `

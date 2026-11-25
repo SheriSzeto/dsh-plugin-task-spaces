@@ -2,35 +2,35 @@
 
 [![verify](https://github.com/SheriSzeto/dsh-plugin-task-spaces/actions/workflows/verify.yml/badge.svg)](https://github.com/SheriSzeto/dsh-plugin-task-spaces/actions/workflows/verify.yml)
 
-「创建任务空间」做成 DeepSeek Harness Web GUI 的客户端插件：
-侧边栏多一个 **任务空间** 面板，里面是一套五步创建向导 + 空间工作台页面，字段和配置项覆盖团队、专项、产品线、长期计划等典型用法。
+**个人的 AI Native 工作流**，做成 DeepSeek Harness Web GUI 的插件：
+侧边栏多一个 **任务空间** 面板，用「空间」组织自己的工作领域；每个任务可以指定**执行者（我或 Agent）**，状态、进展记录和附件都沉淀在任务里。数据保存在本机宿主侧，刷新/清浏览器缓存都不会丢。
 
 ![空间列表](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-spaces-list.png)
 
 ## 功能
 
 - **侧边栏入口**：`sidebar.panellist` 注册「任务空间」图标；点击切到 `main` 面板的独立页面，和「插件」「会话」互不干扰。
-- **空间工作台**：空间卡片展示图标、名称、任务 ID 前缀（如 `ENG`）、工作类型、访问权限、工作流状态、标签、任务类型与功能模块；支持 `全部 / 公开 / 私有` 筛选、卡片菜单（复制设置新建 / 删除空间）和删除二次确认。
-- **任务管理**：点击空间卡片进入该空间的工作台，可以 **添加任务**（标题、描述、处理人、任务类型、状态、优先级、标签、附件），用 **列表 / 看板** 两种视图查看，看板按空间自己的工作流状态分列；**看板支持拖拽卡片改状态**（拖到目标列松手即可，列会高亮），点任务可编辑（含改状态、优先级、标签）或删除。空间卡片上实时显示任务数，删除空间会连带删除其任务。
-- **任务筛选**：工作台顶部可按 **关键词（标题/描述）、任务类型、优先级、标签、处理人** 组合筛选，列表与看板同时生效，计数显示为 `命中 / 总数`，一键「清除筛选」。
-- **处理人与附件**：每个任务可以指派处理人（输入成员或 Agent 名称，回车添加，输入过的名字会记住供下次选择；开启「多人处理人」的空间可指派多人），也可以添加附件（Host 模式下最多 10 个、单个 ≤ 20 MB；图片显示缩略图，可打开或移除）。列表行与看板卡片上会显示处理人头像和附件数量。
-- **任务评论**：任务弹窗里可以直接发表评论（支持 ⌘/Ctrl + Enter），评论人会被记住，评论**即时保存**、可删除；列表行与看板卡片显示评论数。评论随任务一起删除。
+- **空间工作台**：空间卡片展示图标、名称、任务 ID 前缀、工作方向、工作流状态、标签、任务类型与功能模块；卡片菜单（复制设置新建 / 删除空间）和删除二次确认。
+- **任务管理**：点击空间卡片进入该空间的工作台，可以 **添加任务**（标题、描述、执行者、任务类型、状态、优先级、标签、附件），用 **列表 / 看板** 两种视图查看，看板按空间自己的工作流状态分列；**看板支持拖拽卡片改状态**（拖到目标列松手即可，列会高亮），点任务可编辑（含改状态、优先级、标签）或删除。空间卡片上实时显示任务数，删除空间会连带删除其任务。
+- **任务筛选**：工作台顶部可按 **关键词（标题/描述）、任务类型、优先级、标签、执行者** 组合筛选，列表与看板同时生效，计数显示为 `命中 / 总数`，一键「清除筛选」。
+- **执行者与附件**：每个任务有一个**执行者**（输入「我」或 Agent 名称，回车添加，输入过的名字会被记住；再填会替换原来的），也可以添加附件（Host 模式下最多 10 个、单个 ≤ 20 MB；图片显示缩略图，可打开或移除）。列表行与看板卡片显示执行者头像和附件数量。
+- **进展记录**：任务弹窗里可以直接记录进展（支持 ⌘/Ctrl + Enter），记录人会被记住，记录**即时保存**、可删除；列表行与看板卡片显示记录条数。进展随任务一起删除。
 - **五步创建向导**（`创建空间` 弹窗）：
 
-  ![工作类型](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-step1.png)
+  ![工作方向](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-step1.png)
   ![任务与模块](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-modules.png)
   ![从已有空间复制](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-copy.png)
 
   | 步骤 | 内容 |
   | --- | --- |
-  | 1. 工作类型 | 14 种工作类型（软件研发、项目管理、市场营销、设计……），决定推荐的任务类型、默认图标和默认 Agent 类型提示 |
-  | 2. 任务与模块 | 任务类型多选（任务 / 需求 / 缺陷 / 故事 / 用户故事 / 功能 / 请求，按工作类型推荐默认勾选）；功能模块开关：视图、迭代（含 Linear/Jira 两种迭代模式）、专项（史诗）、分拣台；任务为必选模块 |
-  | 3. 基本信息 | 图标 emoji + 12 色底、空间名称（≤32 字，实时计数）、标识符（2-7 位字母数字、组织内唯一、实时校验并预览 `ENG-123`）、侧边栏效果预览 |
-  | 4. 工作流 | 「通过模版创建」四套预设（入门 / 市场营销 / 项目管理 / 产品 + 工程）或「从已有空间复制」（复制状态与标签，不复制成员）；状态可改名、设默认（星标）、增删；标签可增删 |
-  | 5. 权限与确认 | 组织内公开 / 私有、客户请求与多人处理人开关、完整配置摘要，最后「创建空间」 |
+  | 1. 工作方向 | 6 种个人方向（软件研发 / 内容创作 / 研究学习 / 产品设计 / 运营 / 个人事务），决定推荐的任务类型、默认图标 |
+  | 2. 任务与模块 | 任务类型多选（任务 / 需求 / 缺陷 / 研究 / 内容，按工作方向推荐默认勾选）；功能模块：任务（必选）、视图 |
+  | 3. 基本信息 | 图标 emoji + 12 色底、空间名称（≤32 字，实时计数）、标识符（2-7 位字母数字、同一机器唯一、实时校验并预览 `CODE-123`）、侧边栏效果预览 |
+  | 4. 工作流 | 三套个人节奏预设（轻量待办 / 深度工作 / AI 自动化）或「从已有空间复制」；状态可改名、设默认（星标）、增删；标签可增删 |
+  | 5. 确认 | 配置摘要（任务类型、模块、工作流、标签、执行方式），最后「创建空间」 |
 
 - **反馈**：创建成功有 toast、新卡片闪光高亮；标识符冲突、名称为空等校验就地提示。
-- **Host 侧持久化**：空间 / 任务 / 评论 / 附件元数据由**插件宿主半侧**保存到本机 DSH 数据目录 `~/.dsh/task-spaces/data.json`，附件字节保存为真实文件 `~/.dsh/task-spaces/files/<id>`，浏览器通过同源 `/api/task-spaces/...` 读写。**清浏览器站点数据、换浏览器、重启 Harness 都不会丢**；Host 不可用时自动回退到 localStorage（页面顶部会显示「本地模式」）。首次加载会把旧版存在 localStorage 里的数据一次性迁移到 Host。
+- **Host 侧持久化**：空间 / 任务 / 进展记录 / 附件元数据由**插件宿主半侧**保存到本机 DSH 数据目录 `~/.dsh/task-spaces/data.json`，附件字节保存为真实文件 `~/.dsh/task-spaces/files/<id>`，浏览器通过同源 `/api/task-spaces/...` 读写。**清浏览器站点数据、换浏览器、重启 Harness 都不会丢**；Host 不可用时自动回退到 localStorage（页面顶部会显示「本地模式」）。首次加载会把旧版存在 localStorage 里的数据一次性迁移到 Host。
 
 ![空状态](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/empty-state.png)
 
@@ -42,9 +42,9 @@
 
 ![新建任务](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-editor.png)
 
-![处理人与附件](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-assignee-attachment.png)
+![执行者与附件](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-assignee-attachment.png)
 
-![任务评论](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-comments.png)
+![进展记录](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-comments.png)
 
 ## 安装
 
@@ -159,7 +159,7 @@ npm run release   # 构建 + 校验 + 产出 dist/*.tgz
 
 ### 数据与隐私
 
-数据保存在**每个用户自己的机器**上：宿主半侧写入 `~/.dsh/task-spaces/`（`data.json` 存空间/任务/评论与附件元数据，`files/<id>` 存附件字节），不经过任何外部服务器。宿主路由只监听回环地址（127.0.0.1），并拒绝非本机 socket 与跨站请求。
+数据保存在**每个用户自己的机器**上：宿主半侧写入 `~/.dsh/task-spaces/`（`data.json` 存空间/任务/进展记录与附件元数据，`files/<id>` 存附件字节），不经过任何外部服务器。宿主路由只监听回环地址（127.0.0.1），并拒绝非本机 socket 与跨站请求。
 
 - 清浏览器站点数据 / 换浏览器：**不丢**（数据在 Host 侧）
 - 换机器 / 重装系统：需要自行备份 `~/.dsh/task-spaces/`
@@ -179,13 +179,13 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/00-preface.js` | 图标、配色、工作类型/任务类型/模块/工作流预设等静态数据，以及本地存储读写工具 |
+| `src/00-preface.js` | 图标、配色、工作方向/任务类型/模块/工作流预设等静态数据，以及本地存储读写工具 |
 | `src/05-styles.js` | 全部样式（只用 DSH 主题 token，跟随明暗主题），幂等注入 `<style>` |
 | `src/10-ui.js` | 本地 UI 小件：按钮、开关、分段控件、菜单、toast、确认弹层 |
 | `src/20-page.js` | 空间列表页（筛选、卡片、删除/复制入口）与任务状态管理 |
 | `src/15-host-client.js` | 宿主存储客户端：state 读写、附件上传/删除/URL |
 | `src/25-space-view.js` | 空间工作台：任务列表 / 看板、新建与编辑任务弹窗 |
-| `src/30-wizard.js` | 五步创建向导、状态/标签编辑器、权限与摘要 |
+| `src/30-wizard.js` | 五步创建向导、状态/标签编辑器、确认摘要 |
 | `src/40-apply.js` | 注册 `sidebar.panellist` 与 `main` 槽位 |
 | `lib/index.js` | 宿主半侧：`~/.dsh/task-spaces/` 持久化 + `/api/task-spaces` 路由（state / 附件上传下载） |
 | `cordis.patch.yml` | 组合包 patch：把 `task-spaces` 行插入 profile |
@@ -203,11 +203,12 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 - `dsh.client.inject` 声明了 UI 渲染、布局、侧边栏与语言包四个客户端包，保证 bundle 在它们之后加载。
 - 只读写自己的数据目录 `~/.dsh/task-spaces/`，不碰会话日志；HTTP 路由只接受本机回环请求。
 
-## 已知限制（这是 UI 原型）
+## 已知限制
 
-- 数据已由 Host 持久化，但还没有和 DSH 的 Session/Agent 执行打通（任务不能派给 Agent 跑）；下一步是把任务与 Session 关联，让 Agent 处理并回写结果。
-- 多用户/成员/权限只是展示，没有真实的组织与鉴权；处理人与评论人都是自由文本，没有成员目录可选；评论还不支持 @提及、编辑和通知。
+- **定位是个人工作流**：不做团队/成员/权限/共享；数据只在本机、单人使用，换机器需要手动备份 `~/.dsh/task-spaces/`。
+- 还没有和 DSH 的 Session/Agent 执行打通：执行者目前是一个名字标签，任务不能真的派给 Agent 跑；下一步是把任务与 Session 关联，让 Agent 处理并回写结果。
+- 执行者与记录人都是自由文本，没有真正的成员/Agent 目录可选；进展记录还不支持 @提及和通知。
 - 旧版本遗留的附件是 data URL 内联在 `data.json` 里（仍能打开，但会撑大状态文件）；新上传的附件是真实文件。附件没有做缩略图缓存/清理策略，孤儿文件需要手动清理。
 - 看板拖拽只支持「换状态」，同列内的手动排序还没做；状态本身也还不能在空间设置里改名/排序。
 
-![确认摘要](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-summary.png)
+![确认设置](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-summary.png)

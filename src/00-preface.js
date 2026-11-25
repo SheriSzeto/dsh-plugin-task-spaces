@@ -118,117 +118,103 @@ const EMOJI_CHOICES = [
 
 /* ----------------------------------------------------------- work catalog */
 
-/** Work categories offered on step one. */
+/** Work directions offered on step one (personal, not an org chart). */
 const WORK_CATEGORIES = [
-  { id: 'software_development', name: '软件研发', emoji: '🛠️', desc: '需求、缺陷、迭代与发布' },
-  { id: 'project_management', name: '项目管理', emoji: '🗂️', desc: '规划、管理并执行项目' },
-  { id: 'product_management', name: '产品管理', emoji: '🧭', desc: '需求梳理与产品路线图' },
-  { id: 'marketing', name: '市场营销', emoji: '📣', desc: '营销活动、内容与素材' },
-  { id: 'design', name: '设计', emoji: '🎨', desc: '界面设计与创意产出' },
-  { id: 'operations', name: '运营', emoji: '📈', desc: '日常运营与增长动作' },
-  { id: 'it_support', name: 'IT 支持', emoji: '🖥️', desc: '工单、故障与内部支持' },
-  { id: 'human_resources', name: '人力资源', emoji: '👥', desc: '招聘、入转调离' },
-  { id: 'customer_service', name: '客户服务', emoji: '🎧', desc: '客户请求与问题跟进' },
-  { id: 'legal', name: '法务', emoji: '⚖️', desc: '合同、合规与风险' },
-  { id: 'finance', name: '财务', emoji: '🧾', desc: '预算、报销与结算' },
-  { id: 'sales', name: '销售', emoji: '🤝', desc: '线索、商机与成交' },
-  { id: 'data_science', name: '数据科学', emoji: '📊', desc: '数据探索与模型实验' },
-  { id: 'other', name: '其他', emoji: '✨', desc: '以上都不是' },
+  { id: 'software_development', name: '软件研发', emoji: '🛠️', desc: '写代码、修缺陷、做工具' },
+  { id: 'content', name: '内容创作', emoji: '✍️', desc: '写作、视频、文章与素材' },
+  { id: 'research', name: '研究学习', emoji: '🔭', desc: '调研、读书、实验与笔记' },
+  { id: 'design', name: '产品设计', emoji: '🎨', desc: '产品想法、原型与体验打磨' },
+  { id: 'operations', name: '运营', emoji: '📈', desc: '账号、增长与日常运营动作' },
+  { id: 'personal', name: '个人事务', emoji: '✨', desc: '生活、财务、计划与其他' },
 ]
 
-/** Suggested identifier prefix per category. */
+/** Suggested identifier prefix per work direction. */
 const CATEGORY_IDENTIFIER = {
-  software_development: 'ENG',
-  project_management: 'PM',
-  product_management: 'PROD',
-  marketing: 'MKT',
+  software_development: 'CODE',
+  content: 'WRITE',
+  research: 'NOTE',
   design: 'DSGN',
   operations: 'OPS',
-  it_support: 'IT',
-  human_resources: 'HR',
-  customer_service: 'CS',
-  legal: 'LEGAL',
-  finance: 'FIN',
-  sales: 'SLS',
-  data_science: 'DATA',
-  other: 'GEN',
+  personal: 'ME',
 }
 
-/** Issue-type templates offered on the task-types step. */
+/** Old category ids from the team-era model, remapped onto the personal ones. */
+const CATEGORY_MIGRATION = {
+  software_development: 'software_development',
+  project_management: 'design',
+  product_management: 'design',
+  marketing: 'content',
+  design: 'design',
+  operations: 'operations',
+  it_support: 'personal',
+  human_resources: 'personal',
+  customer_service: 'personal',
+  legal: 'personal',
+  finance: 'personal',
+  sales: 'personal',
+  data_science: 'research',
+  other: 'personal',
+}
+
+/** Issue-type templates offered on the task-types step (personal scale). */
 const TASK_TYPE_POOL = [
-  { id: 'requirement', name: '需求', desc: '跟踪产品需求与规格。' },
-  { id: 'bug', name: '缺陷', desc: '识别并跟踪需要解决的软件缺陷。' },
-  { id: 'story', name: '故事', desc: '从用户视角描述的需求。' },
-  { id: 'user_story', name: '用户故事', desc: '从最终用户视角描述的功能。' },
-  { id: 'feature', name: '功能', desc: '需要构建的新能力或增强。' },
-  { id: 'request', name: '请求', desc: '需要分流处理的外部请求。' },
+  { id: 'requirement', name: '需求', desc: '要做到的一件具体的事。' },
+  { id: 'bug', name: '缺陷', desc: '已有的东西坏了或不对。' },
+  { id: 'research', name: '研究', desc: '需要先搞清楚的未知问题。' },
+  { id: 'content', name: '内容', desc: '要写、要拍、要整理输出的东西。' },
 ]
 
-/**
- * Default task types per work category: `fixed` is always present, `checked`
- * mirrors the product's onboarding defaults for each category.
- */
-function taskTypeDefaults(category) {
-  if (category === 'software_development' || category === 'project_management') {
-    return { options: ['requirement', 'bug', 'story', 'user_story'], checked: ['requirement', 'bug'] }
-  }
-  if (category === 'product_management') {
-    return { options: ['requirement', 'bug', 'feature', 'user_story'], checked: ['requirement', 'bug'] }
-  }
-  if (category === 'marketing') {
-    return { options: ['requirement', 'feature', 'request'], checked: ['request'] }
-  }
-  return { options: ['request'], checked: [] }
+/** Legacy task-type ids from the agile model, remapped onto the personal pool. */
+const TASK_TYPE_MIGRATION = {
+  requirement: 'requirement',
+  bug: 'bug',
+  story: 'requirement',
+  user_story: 'requirement',
+  feature: 'requirement',
+  request: 'content',
+  research: 'research',
+  content: 'content',
 }
 
-/** Feature modules offered on step two. */
+/**
+ * Default task types per work direction: `options` are offered, `checked` are
+ * pre-selected. The fixed `任务` type is always available.
+ */
+function taskTypeDefaults(category) {
+  if (category === 'software_development') {
+    return { options: ['requirement', 'bug', 'research'], checked: ['requirement', 'bug'] }
+  }
+  if (category === 'content') {
+    return { options: ['content', 'research'], checked: ['content'] }
+  }
+  if (category === 'research') {
+    return { options: ['research', 'content'], checked: ['research'] }
+  }
+  if (category === 'design') {
+    return { options: ['requirement', 'research'], checked: ['requirement'] }
+  }
+  return { options: ['requirement', 'content'], checked: [] }
+}
+
+/** Feature modules offered on step two (personal workspace, no team modules). */
 const MODULE_DEFS = [
   {
     id: 'tasks',
     name: '任务',
     icon: 'check-circle',
-    desc: '任务用于承载需求、缺陷、技术债和日常工作。你可以指派给成员或 Agent，并在这里跟踪状态、评论和执行结果。',
+    desc: '任务承载你要推进的事，可以指定执行者（我或 Agent），并跟踪状态、进展和附件。',
     locked: true,
   },
   {
     id: 'views',
     name: '视图',
     icon: 'grid',
-    desc: '视图用于保存常用的任务筛选和展示方式。按处理人、状态、专项等条件创建视图后，可以快速回到同一套工作视角。',
-  },
-  {
-    id: 'sprints',
-    name: '迭代',
-    icon: 'workflow',
-    desc: '用短而时间盒化的窗口帮助团队保持专注。',
-  },
-  {
-    id: 'projects',
-    name: '专项（史诗）',
-    icon: 'layers',
-    desc: '专项是一场有明确起始和终止时间的攻坚战（通常 1-3 个月结束），对应敏捷开发里的「史诗/Epic」。',
-  },
-  {
-    id: 'triage',
-    name: '分拣台',
-    icon: 'search',
-    desc: '分拣台用于集中处理由外部应用集成和访客创建的任务。你可以在这里审核、设置优先级，再决定接受或拒绝任务。',
+    desc: '视图用于保存常用的任务筛选和展示方式。按状态、优先级、标签等条件创建视图后，可以快速回到同一套工作视角。',
   },
 ]
 
-/** Sprint planning modes shown when the 迭代 module is on. */
-const SPRINT_MODES = [
-  {
-    id: 'automatic',
-    name: '自动周期模式（Linear 模式）',
-    desc: '系统按周期创建未来迭代，按计划开始和完成迭代，并自动顺延未完成工作。',
-  },
-  {
-    id: 'manual',
-    name: '手动模式（Jira 模式）',
-    desc: '由你手动创建、开始和完成迭代，不进行自动排期维护。',
-  },
-]
+/** Legacy module ids from the team-era model; dropped when old spaces load. */
+const LEGACY_MODULE_IDS = ['sprints', 'projects', 'triage']
 
 /* ---------------------------------------------------------- workflow data */
 
@@ -241,55 +227,43 @@ const STATUS_COLORS = {
   canceled: '#b6bbc4',
 }
 
-/** Workflow presets offered on step four. */
+/** Workflow presets offered on step four (personal rhythms, not team processes). */
 const WORKFLOW_PRESETS = [
   {
     id: 'starter',
-    name: '入门',
-    subtitle: '标准组织工作流',
+    name: '轻量待办',
+    subtitle: '想法 → 进行中 → 完成',
     statuses: [
-      { name: '待办', color: 'backlog' },
+      { name: '想法', color: 'backlog' },
       { name: '进行中', color: 'started' },
       { name: '已完成', color: 'completed' },
     ],
-    labels: ['bug', 'docs', 'urgent'],
+    labels: ['灵感', '待读', '重要'],
   },
   {
-    id: 'marketing',
-    name: '市场营销',
-    subtitle: '高效推进营销活动',
+    id: 'deep',
+    name: '深度工作',
+    subtitle: '研究、产出、审阅的节奏',
     statuses: [
-      { name: '想法', color: 'backlog' },
-      { name: '制作中', color: 'started' },
-      { name: '审核中', color: 'unstarted' },
-      { name: '已发布', color: 'completed' },
+      { name: '待开始', color: 'backlog' },
+      { name: '研究中', color: 'started' },
+      { name: '产出中', color: 'started' },
+      { name: '待审阅', color: 'unstarted' },
+      { name: '已完成', color: 'completed' },
     ],
-    labels: ['内容', '素材', '活动'],
+    labels: ['研究', '写作', '审阅'],
   },
   {
-    id: 'pm',
-    name: '项目管理',
-    subtitle: '规划、管理并执行',
+    id: 'ai',
+    name: 'AI 自动化',
+    subtitle: '交给 Agent 执行与验收',
     statuses: [
-      { name: '待规划', color: 'backlog' },
-      { name: '进行中', color: 'started' },
+      { name: '待指派', color: 'backlog' },
+      { name: '执行中', color: 'started' },
       { name: '待验收', color: 'unstarted' },
       { name: '已完成', color: 'completed' },
     ],
-    labels: ['里程碑', '风险', '阻塞'],
-  },
-  {
-    id: 'product',
-    name: '产品 + 工程',
-    subtitle: '简化产品生命周期',
-    statuses: [
-      { name: 'Backlog', color: 'backlog' },
-      { name: '待办', color: 'unstarted' },
-      { name: '进行中', color: 'started' },
-      { name: '评审中', color: 'started' },
-      { name: '已完成', color: 'completed' },
-    ],
-    labels: ['bug', 'frontend', 'urgent'],
+    labels: ['Agent', '自动化', '验收'],
   },
 ]
 
@@ -297,8 +271,8 @@ const WORKFLOW_PRESETS = [
 const WIZARD_STEPS = [
   {
     id: 'category',
-    rail: '工作类型',
-    title: '该空间主要做什么类型的工作？',
+    rail: '工作方向',
+    title: '这个空间主要做什么？',
     desc: '这有助于我们为你的空间推荐合适的任务类型。',
   },
   {
@@ -320,22 +294,21 @@ const WIZARD_STEPS = [
     desc: '先选择预设，再微调状态和标签。',
   },
   {
-    id: 'access',
-    rail: '权限与确认',
-    title: '空间访问权限与设置',
-    desc: '选择谁可以看到此空间，并可选择复制另一个空间的设置。',
+    id: 'confirm',
+    rail: '确认',
+    title: '确认空间设置',
+    desc: '检查一下，创建后可以随时回到空间里调整。',
   },
 ]
 
 /** Fresh wizard draft. */
 function createDraft() {
-  const preset = WORKFLOW_PRESETS.find((item) => item.id === 'product') ?? WORKFLOW_PRESETS[0]
+  const preset = WORKFLOW_PRESETS[0]
   return {
     step: 0,
     workCategory: 'software_development',
     taskTypes: taskTypeDefaults('software_development').checked,
-    modules: { tasks: true, views: true, sprints: false, projects: false, triage: false },
-    sprintMode: 'automatic',
+    modules: { tasks: true, views: true },
     name: '',
     identifier: '',
     identifierTouched: false,
@@ -345,10 +318,37 @@ function createDraft() {
     copyFrom: null,
     statuses: preset.statuses.map((status) => ({ name: status.name, color: status.color })),
     labels: [...preset.labels],
-    access: 'public',
-    customerRequests: false,
-    multiAssignee: false,
   }
+}
+
+/** Normalize one space onto the personal model (drops team-era settings). */
+function normalizeSpace(space) {
+  if (space === null || typeof space !== 'object') return space
+  const next = { ...space }
+  delete next.access
+  delete next.multiAssignee
+  delete next.customerRequests
+  delete next.sprintMode
+  delete next.members
+  const category = CATEGORY_MIGRATION[next.workCategory]
+  if (category !== undefined) next.workCategory = category
+  const modules = next.modules !== null && typeof next.modules === 'object' ? next.modules : {}
+  next.modules = { tasks: true, views: modules.views === true }
+  if (Array.isArray(next.taskTypes)) {
+    const migrated = new Set()
+    for (const id of next.taskTypes) {
+      const mapped = TASK_TYPE_MIGRATION[id]
+      if (mapped !== undefined) migrated.add(mapped)
+    }
+    next.taskTypes = [...migrated]
+  }
+  if (Array.isArray(next.labels)) next.labels = next.labels.filter((label) => typeof label === 'string')
+  return next
+}
+
+/** Normalize a persisted space list (idempotent). */
+function normalizeSpaces(spaces) {
+  return Array.isArray(spaces) ? spaces.map(normalizeSpace) : []
 }
 
 /* ----------------------------------------------------------------- tasks */
@@ -484,7 +484,7 @@ function loadSpaces() {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (raw === null) return []
     const parsed = JSON.parse(raw)
-    return Array.isArray(parsed) ? parsed.filter((space) => space && typeof space.name === 'string') : []
+    return Array.isArray(parsed) ? normalizeSpaces(parsed.filter((space) => space && typeof space.name === 'string')) : []
   } catch {
     return []
   }

@@ -47,8 +47,8 @@ url: https://github.com/SheriSzeto/dsh-plugin-task-spaces
 name: SheriSzeto/dsh-plugin-task-spaces
 category: ui
 description:
-  en: 'Task spaces for the DSH Web GUI: a five-step create-space wizard with preset workflows and per-space modules.'
-  zh: 'DSH Web GUI 的任务空间：五步创建向导，支持预设工作流与按空间配置的功能模块。'
+  en: 'Personal AI-native task spaces for the DSH Web GUI: five-step space setup, tasks with an executor (me or an Agent), progress logs, attachments.'
+  zh: 'DSH Web GUI 的个人 AI 原生任务空间：五步创建空间，任务可指定执行者（我或 Agent），支持进展记录与附件。'
 icon: https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/icon-180.png
 ```
 
@@ -101,8 +101,8 @@ config, and delete confirmation.
 - Dual-face plugin: the client half (`lib/client.js`) renders the UI, the node half persists
   spaces/tasks/comments to `~/.dsh/task-spaces/data.json` and attachments as files, serving them
   over loopback-only `/api/task-spaces` routes.
-- Data stays on the user's machine and survives clearing browser site data; when the host half is
-  unavailable the client falls back to `localStorage`.
+- Personal, single-user workflow: data stays on the user's machine and survives clearing browser
+  site data; when the host half is unavailable the client falls back to `localStorage`.
 - Verified on DSH Desktop 2.0.10 / dsh 0.2.0-rc.2: installed from a packed tarball into a
   clean profile, created spaces end to end.
 - Entry file: `data/plugins/SheriSzeto__dsh-plugin-task-spaces.yml` (this is the only file touched).
