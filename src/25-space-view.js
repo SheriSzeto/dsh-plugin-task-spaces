@@ -65,6 +65,9 @@ function TaskRow({ space, task, onOpen }) {
       task.attachments.length > 0
         ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 12 }), String(task.attachments.length))
         : null,
+      task.comments.length > 0
+        ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条评论` }, h(Icon, { name: 'comment', size: 12 }), String(task.comments.length))
+        : null,
       priority.color === null ? null : h(
         'span',
         { className: 'ts-priority', 'data-priority': priority.id },
@@ -105,14 +108,21 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
       ),
       task.labels.map((label) => h('span', { key: label, className: 'ts-label-chip' }, label)),
     ),
-    task.assignees.length > 0 || task.attachments.length > 0
+    task.assignees.length > 0 || task.attachments.length > 0 || task.comments.length > 0
       ? h(
           'span',
           { className: 'ts-board-card-foot' },
           h(AvatarStack, { names: task.assignees }),
-          task.attachments.length > 0
-            ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 11 }), String(task.attachments.length))
-            : h('span', null),
+          h(
+            'span',
+            { className: 'ts-board-card-foot-right' },
+            task.comments.length > 0
+              ? h('span', { className: 'ts-comment-count', title: `${task.comments.length} 条评论` }, h(Icon, { name: 'comment', size: 11 }), String(task.comments.length))
+              : null,
+            task.attachments.length > 0
+              ? h('span', { className: 'ts-attach-count', title: task.attachments.map((file) => file.name).join('、') }, h(Icon, { name: 'paperclip', size: 11 }), String(task.attachments.length))
+              : null,
+          ),
         )
       : null,
   )
@@ -127,7 +137,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
  * @param props.onSubmit - receives the edited field set.
  * @param props.onDelete - delete the edited task (edit mode only).
  */
-function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete }) {
+function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete, onAddComment, onDeleteComment }) {
   const isEdit = task !== undefined
   const [title, setTitle] = React.useState(isEdit ? task.title : '')
   const [description, setDescription] = React.useState(isEdit ? task.description : '')
@@ -143,6 +153,19 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
   const [attachments, setAttachments] = React.useState(isEdit ? [...task.attachments] : [])
   const [attachError, setAttachError] = React.useState('')
   const fileInputRef = React.useRef(null)
+  const [commentAuthor, setCommentAuthor] = React.useState(() => loadCommentAuthor() || '我')
+  const [commentBody, setCommentBody] = React.useState('')
+  const commentCount = isEdit ? task.comments.length : 0
+
+  /** Post one comment immediately (comments are not part of the field draft). */
+  const submitComment = () => {
+    const body = commentBody.trim()
+    if (body.length === 0 || !isEdit) return
+    const author = commentAuthor.trim().length === 0 ? '我' : commentAuthor.trim()
+    onAddComment({ id: newTaskId(), author, body, createdAt: Date.now() })
+    saveCommentAuthor(author)
+    setCommentBody('')
+  }
 
   /** Add one assignee (single-assignee spaces replace the current one). */
   const addAssignee = (raw) => {
@@ -443,6 +466,91 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                 ),
             attachError.length > 0 ? h('span', { className: 'ts-attach-error' }, attachError) : null,
           ),
+          isEdit
+            ? h(
+                'div',
+                { className: 'ts-field' },
+                h(
+                  'span',
+                  { className: 'ts-field-label' },
+                  h('span', null, '评论'),
+                  h('span', { className: 'ts-field-hint' }, commentCount === 0 ? '还没有评论' : `${commentCount} 条`),
+                ),
+                commentCount === 0
+                  ? h('span', { className: 'ts-comment-empty' }, '写下第一条评论，让处理过程和结论留在任务里。')
+                  : h(
+                      'div',
+                      { className: 'ts-comment-list' },
+                      task.comments
+                        .slice()
+                        .sort((left, right) => left.createdAt - right.createdAt)
+                        .map((comment) =>
+                          h(
+                            'div',
+                            { key: comment.id, className: 'ts-comment' },
+                            h(Avatar, { name: comment.author }),
+                            h(
+                              'div',
+                              { className: 'ts-comment-body' },
+                              h(
+                                'div',
+                                { className: 'ts-comment-head' },
+                                h('span', { className: 'ts-comment-author' }, comment.author),
+                                h('span', { className: 'ts-comment-time' }, relativeTime(comment.createdAt)),
+                              ),
+                              h('div', { className: 'ts-comment-text' }, comment.body),
+                            ),
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'ts-comment-del',
+                                'aria-label': '删除评论',
+                                title: '删除评论',
+                                onClick: () => onDeleteComment(comment.id),
+                              },
+                              h(Icon, { name: 'close', size: 11 }),
+                            ),
+                          ),
+                        ),
+                    ),
+                h(
+                  'div',
+                  { className: 'ts-comment-composer' },
+                  h(
+                    'div',
+                    { className: 'ts-comment-composer-row' },
+                    h(Avatar, { name: commentAuthor.trim().length === 0 ? '我' : commentAuthor.trim() }),
+                    h('input', {
+                      className: 'ts-comment-author-input',
+                      value: commentAuthor,
+                      placeholder: '你的名字',
+                      'aria-label': '评论人',
+                      onChange: (event) => setCommentAuthor(event.target.value),
+                    }),
+                    h('span', { className: 'ts-field-hint' }, '会记住，下次自动填'),
+                  ),
+                  h('textarea', {
+                    className: 'ts-comment-input',
+                    placeholder: '写下评论…（⌘/Ctrl + Enter 发表）',
+                    value: commentBody,
+                    'aria-label': '评论内容',
+                    onChange: (event) => setCommentBody(event.target.value),
+                    onKeyDown: (event) => {
+                      if (event.key === 'Enter' && (event.metaKey || event.ctrlKey)) {
+                        event.preventDefault()
+                        submitComment()
+                      }
+                    },
+                  }),
+                  h(
+                    'div',
+                    { className: 'ts-comment-actions' },
+                    h(Btn, { kind: 'primary', disabled: commentBody.trim().length === 0, onClick: submitComment }, '发表评论'),
+                  ),
+                ),
+              )
+            : null,
         ),
         h(
           'div',
@@ -509,10 +617,12 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
   }
 
   const openCreate = (status) => setEditor({ mode: 'create', status })
-  const openEdit = (task) => setEditor({ mode: 'edit', task })
+  const openEdit = (task) => setEditor({ mode: 'edit', taskId: task.id })
+
+  const editingTask = editor !== null && editor.mode === 'edit' ? tasks.find((task) => task.id === editor.taskId) : undefined
 
   const submitEditor = (fields) => {
-    if (editor.mode === 'edit') onUpdate(editor.task.id, fields)
+    if (editor.mode === 'edit') onUpdate(editor.taskId, fields)
     else onCreate(fields)
     setEditor(null)
   }
@@ -741,11 +851,11 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
                 ),
               ),
     ),
-    editor === null
+    editor === null || (editor.mode === 'edit' && editingTask === undefined)
       ? null
       : h(TaskEditor, {
           space,
-          task: editor.mode === 'edit' ? editor.task : undefined,
+          task: editor.mode === 'edit' ? editingTask : undefined,
           initialStatus: editor.mode === 'create' ? editor.status : undefined,
           suggestions: assigneeOptions,
           onClose: () => setEditor(null),
@@ -753,9 +863,17 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
           onDelete:
             editor.mode === 'edit'
               ? () => {
-                  onDeleteTask(editor.task.id)
+                  onDeleteTask(editor.taskId)
                   setEditor(null)
                 }
+              : undefined,
+          onAddComment:
+            editor.mode === 'edit'
+              ? (comment) => onUpdate(editingTask.id, { comments: [...editingTask.comments, comment] })
+              : undefined,
+          onDeleteComment:
+            editor.mode === 'edit'
+              ? (commentId) => onUpdate(editingTask.id, { comments: editingTask.comments.filter((entry) => entry.id !== commentId) })
               : undefined,
         }),
   )

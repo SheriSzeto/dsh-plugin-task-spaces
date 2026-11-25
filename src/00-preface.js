@@ -59,6 +59,7 @@ const ICON_PATHS = {
   checklist: ['M2.5 4h2v2h-2zM6.5 4.6H13', 'M2.5 9h2v2h-2zM6.5 9.6H13'],
   'arrow-left': ['M13 8H4M8.5 3.5L4 8l4.5 4.5'],
   paperclip: ['M12.8 7.3l-5 5a2.8 2.8 0 01-4-4l5.4-5.4a1.9 1.9 0 012.7 2.7l-5.4 5.4a1 1 0 01-1.4-1.4l5-5'],
+  comment: ['M13.5 2.5h-11v8.5h3v2.5l3-2.5h5z'],
   user: ['M8 8.2a2.9 2.9 0 100-5.8 2.9 2.9 0 000 5.8Z', 'M2.8 13.8c0-2.3 2.3-4 5.2-4s5.2 1.7 5.2 4'],
   rocket: ['M6 10l-2 3 3-1.2', 'M10 10l2 3-3-1.2', 'M8 2.5c2.8 1.3 4 3.7 4 6.4L8 12 4 8.9C4 6.2 5.2 3.8 8 2.5Z', 'M6.4 6.6a2 2 0 112.8 2.8'],
   sun: ['M8 11a3 3 0 100-6 3 3 0 000 6Z', 'M8 1.5v1.4M8 13.1v1.4M1.5 8h1.4M13.1 8h1.4M3.4 3.4l1 1M11.6 11.6l1 1M3.4 12.6l1-1M11.6 4.4l1-1'],
@@ -384,6 +385,7 @@ function loadTasks() {
         // Fields added after the first task release: default them so old tasks stay usable.
         assignees: Array.isArray(task.assignees) ? task.assignees : [],
         attachments: Array.isArray(task.attachments) ? task.attachments : [],
+        comments: Array.isArray(task.comments) ? task.comments : [],
       }))
   } catch {
     return []
@@ -419,6 +421,27 @@ function fileSizeText(bytes) {
 /** Whether an attachment should render as an image thumbnail. */
 function isImageAttachment(type) {
   return typeof type === 'string' && type.startsWith('image/')
+}
+
+/** localStorage key remembering the last comment author used in this browser. */
+const COMMENT_AUTHOR_KEY = 'dsh.task-spaces.comment-author.v1'
+
+/** Read the remembered comment author ('' when never set). */
+function loadCommentAuthor() {
+  try {
+    return window.localStorage.getItem(COMMENT_AUTHOR_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+/** Remember the comment author for the next comment. */
+function saveCommentAuthor(name) {
+  try {
+    window.localStorage.setItem(COMMENT_AUTHOR_KEY, name)
+  } catch {
+    /* private mode: the default still works for this session */
+  }
 }
 
 /** Attachment limits: localStorage has to hold the encoded bytes, so keep it small. */

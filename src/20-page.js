@@ -166,6 +166,7 @@ function TaskSpacesPage() {
         labels: [...fields.labels],
         assignees: [...(fields.assignees ?? [])],
         attachments: fields.attachments ?? [],
+        comments: [],
         createdAt: now,
         updatedAt: now,
       }
@@ -187,6 +188,8 @@ function TaskSpacesPage() {
           return next
         }),
       )
+      const commentOnly = fields.comments !== undefined && Object.keys(fields).length === 1
+      if (commentOnly) return
       const moved = fields.status !== undefined && previous !== undefined && previous.status !== fields.status
       showToast(moved ? `任务已移动到「${fields.status}」。` : '任务已更新。')
     },

@@ -670,6 +670,7 @@ const TASK_SPACES_CSS = `
 
 .ts-board-card-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .ts-board-card-foot .ts-attach-count { gap: 3px; }
+.ts-board-card-foot-right { display: inline-flex; align-items: center; gap: 8px; margin-left: auto; }
 
 /* -------------------------------------------------------- space workspace */
 
@@ -778,6 +779,48 @@ const TASK_SPACES_CSS = `
   width: auto; min-width: 108px; flex: 0 0 auto; height: 30px; padding: 0 8px; font-size: 12.5px;
 }
 .ts-filter-clear { height: 30px; padding: 0 10px; font-size: 12px; }
+
+/* -------------------------------------------------------------- comments */
+
+.ts-comment-list { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.ts-comment {
+  display: flex; gap: 9px; padding: 10px 11px; border-radius: 10px;
+  border: 0.5px solid var(--ts-border); background: var(--dsw-alias-bg-base);
+}
+.ts-comment-body { flex: 1; min-width: 0; }
+.ts-comment-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.ts-comment-author { font-size: 12.5px; font-weight: 600; }
+.ts-comment-time { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.ts-comment-text {
+  margin-top: 3px; font-size: 12.5px; line-height: 1.6; color: var(--dsw-alias-label-primary);
+  white-space: pre-wrap; word-break: break-word;
+}
+.ts-comment-del {
+  appearance: none; flex: 0 0 auto; border: 0; background: transparent; color: var(--dsw-alias-label-secondary);
+  width: 22px; height: 22px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center;
+  cursor: pointer; opacity: 0; transition: opacity 120ms ease;
+}
+.ts-comment:hover .ts-comment-del { opacity: 0.7; }
+.ts-comment-del:hover { opacity: 1; color: var(--dsw-alias-state-error-primary); background: var(--ts-hover); }
+.ts-comment-empty { color: var(--dsw-alias-label-secondary); font-size: 12px; padding: 8px 2px; }
+.ts-comment-composer { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; padding: 11px; border-radius: 10px; border: 0.5px dashed var(--ts-border-strong); }
+.ts-comment-composer-row { display: flex; align-items: center; gap: 8px; }
+.ts-comment-author-input {
+  flex: 0 0 auto; width: 140px; height: 28px; padding: 0 9px; border-radius: 7px;
+  border: 0.5px solid var(--ts-border-strong); background: transparent;
+  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 12px;
+}
+.ts-comment-author-input:focus { outline: none; border-color: var(--ts-accent); }
+.ts-comment-input {
+  width: 100%; min-height: 58px; resize: vertical; padding: 8px 10px; border-radius: 8px;
+  border: 0.5px solid var(--ts-border-strong); background: var(--dsw-alias-bg-base);
+  color: var(--dsw-alias-label-primary); font-family: inherit; font-size: 12.5px; line-height: 1.55;
+}
+.ts-comment-input:focus { outline: none; border-color: var(--ts-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--ts-accent) 16%, transparent); }
+.ts-comment-input::placeholder { color: var(--dsw-alias-label-secondary); opacity: 0.8; }
+.ts-comment-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
+
+.ts-comment-count { display: inline-flex; align-items: center; gap: 3px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 
 /* ------------------------------------------------------------ task editor */
 
