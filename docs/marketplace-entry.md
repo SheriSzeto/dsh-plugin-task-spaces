@@ -98,8 +98,11 @@ access & confirmation), plus a spaces page with cards, filtering, duplicate
 config, and delete confirmation.
 
 - Bundle manifest: `dsh.bundle.patch` points at `cordis.patch.yml` (single `insert` row).
-- Client half ships as `lib/client.js`; the node half is an empty `apply()`.
-- Data is local-only: spaces are stored in the browser's `localStorage`, each user independent.
+- Dual-face plugin: the client half (`lib/client.js`) renders the UI, the node half persists
+  spaces/tasks/comments to `~/.dsh/task-spaces/data.json` and attachments as files, serving them
+  over loopback-only `/api/task-spaces` routes.
+- Data stays on the user's machine and survives clearing browser site data; when the host half is
+  unavailable the client falls back to `localStorage`.
 - Verified on DSH Desktop 2.0.10 / dsh 0.2.0-rc.2: installed from a packed tarball into a
   clean profile, created spaces end to end.
 - Entry file: `data/plugins/SheriSzeto__dsh-plugin-task-spaces.yml` (this is the only file touched).

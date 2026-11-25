@@ -137,7 +137,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
  * @param props.onSubmit - receives the edited field set.
  * @param props.onDelete - delete the edited task (edit mode only).
  */
-function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete, onAddComment, onDeleteComment }) {
+function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete, onAddComment, onDeleteComment, onUploadFile, onDeleteAttachment }) {
   const isEdit = task !== undefined
   const [title, setTitle] = React.useState(isEdit ? task.title : '')
   const [description, setDescription] = React.useState(isEdit ? task.description : '')
@@ -152,7 +152,22 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
   const [assigneeDraft, setAssigneeDraft] = React.useState('')
   const [attachments, setAttachments] = React.useState(isEdit ? [...task.attachments] : [])
   const [attachError, setAttachError] = React.useState('')
+  const [uploading, setUploading] = React.useState(false)
   const fileInputRef = React.useRef(null)
+  const hostUpload = typeof onUploadFile === 'function'
+  const attachmentMaxBytes = hostUpload ? HOST_ATTACHMENT_MAX_BYTES : ATTACHMENT_MAX_BYTES
+  const attachmentMaxCount = hostUpload ? HOST_ATTACHMENT_MAX_COUNT : ATTACHMENT_MAX_COUNT
+  const uploadedRef = React.useRef([])
+  const savedRef = React.useRef(false)
+
+  // A file uploaded during this edit but never saved must not linger on disk.
+  React.useEffect(
+    () => () => {
+      if (savedRef.current || typeof onDeleteAttachment !== 'function') return
+      for (const id of uploadedRef.current) onDeleteAttachment({ id })
+    },
+    [onDeleteAttachment],
+  )
   const [commentAuthor, setCommentAuthor] = React.useState(() => loadCommentAuthor() || '我')
   const [commentBody, setCommentBody] = React.useState('')
   const commentCount = isEdit ? task.comments.length : 0
@@ -178,34 +193,53 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
     setAssigneeDraft('')
   }
 
-  /** Read picked files into data-URL attachments, enforcing the local-storage budget. */
+  /** Add picked files: upload to the host when available, else inline as data URLs. */
   const pickFiles = async (fileList) => {
     setAttachError('')
     const files = Array.from(fileList ?? [])
     if (files.length === 0) return
     const next = [...attachments]
-    for (const file of files) {
-      if (next.length >= ATTACHMENT_MAX_COUNT) {
-        setAttachError(`最多添加 ${ATTACHMENT_MAX_COUNT} 个附件。`)
-        break
+    if (hostUpload) setUploading(true)
+    try {
+      for (const file of files) {
+        if (next.length >= attachmentMaxCount) {
+          setAttachError(`最多添加 ${attachmentMaxCount} 个附件。`)
+          break
+        }
+        if (file.size > attachmentMaxBytes) {
+          setAttachError(`「${file.name}」超过 ${fileSizeText(attachmentMaxBytes)}。`)
+          continue
+        }
+        try {
+          if (hostUpload) {
+            // The host stores the bytes on disk and returns only metadata.
+            const meta = await onUploadFile(file)
+            uploadedRef.current.push(meta.id)
+            next.push(meta)
+          } else {
+            const dataUrl = await readFileAsDataUrl(file)
+            next.push({ id: newTaskId(), name: file.name, size: file.size, type: file.type, dataUrl })
+          }
+        } catch (error) {
+          setAttachError(error instanceof Error ? error.message : `添加「${file.name}」失败。`)
+        }
       }
-      if (file.size > ATTACHMENT_MAX_BYTES) {
-        setAttachError(`「${file.name}」超过 ${fileSizeText(ATTACHMENT_MAX_BYTES)}，换一个小一点的文件。`)
-        continue
-      }
-      try {
-        const dataUrl = await readFileAsDataUrl(file)
-        next.push({ id: newTaskId(), name: file.name, size: file.size, type: file.type, dataUrl })
-      } catch {
-        setAttachError(`读取「${file.name}」失败。`)
-      }
+    } finally {
+      if (hostUpload) setUploading(false)
     }
     setAttachments(next)
     if (fileInputRef.current !== null) fileInputRef.current.value = ''
   }
 
-  /** Remove one attachment. */
-  const removeAttachment = (id) => setAttachments((current) => current.filter((file) => file.id !== id))
+  /** Remove one attachment, deleting its host-stored bytes when applicable. */
+  const removeAttachment = (id) => {
+    const target = attachments.find((file) => file.id === id)
+    if (target !== undefined && typeof onDeleteAttachment === 'function') onDeleteAttachment(target)
+    setAttachments((current) => current.filter((file) => file.id !== id))
+  }
+
+  /** Download/open URL for one attachment (host route or inline data URL). */
+  const attachmentHref = (file) => file.dataUrl ?? hostFileUrl(file.id)
 
   const typeChoices = ['task', ...space.taskTypes.filter((id) => id !== 'task')]
   const submitEnabled = title.trim().length > 0
@@ -220,6 +254,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
 
   const submit = () => {
     if (!submitEnabled) return
+    savedRef.current = true
     onSubmit({
       title: title.trim(),
       description: description.trim(),
@@ -409,7 +444,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
               'span',
               { className: 'ts-field-label' },
               h('span', null, '附件'),
-              h('span', { className: 'ts-field-hint' }, `最多 ${ATTACHMENT_MAX_COUNT} 个，单个不超过 ${fileSizeText(ATTACHMENT_MAX_BYTES)}`),
+              h('span', { className: 'ts-field-hint' }, `最多 ${attachmentMaxCount} 个，单个不超过 ${fileSizeText(attachmentMaxBytes)}`),
             ),
             h(
               'div',
@@ -421,7 +456,11 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                 className: 'ts-file-input',
                 onChange: (event) => pickFiles(event.target.files),
               }),
-              h(Btn, { kind: 'outline', icon: 'paperclip', onClick: () => fileInputRef.current?.click() }, '添加附件'),
+              h(
+                Btn,
+                { kind: 'outline', icon: 'paperclip', disabled: uploading, onClick: () => fileInputRef.current?.click() },
+                uploading ? '上传中…' : '添加附件',
+              ),
               attachments.length > 0 ? h('span', { className: 'ts-field-hint' }, `已添加 ${attachments.length} 个`) : null,
             ),
             attachments.length === 0
@@ -437,7 +476,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                         'span',
                         { className: 'ts-attach-thumb' },
                         isImageAttachment(file.type)
-                          ? h('img', { src: file.dataUrl, alt: file.name })
+                          ? h('img', { src: file.dataUrl ?? hostFileUrl(file.id), alt: file.name })
                           : h(Icon, { name: 'paperclip', size: 15 }),
                       ),
                       h(
@@ -448,7 +487,14 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                       ),
                       h(
                         'a',
-                        { className: 'ts-attach-open', href: file.dataUrl, download: file.name, onClick: (event) => event.stopPropagation() },
+                        {
+                          className: 'ts-attach-open',
+                          href: attachmentHref(file),
+                          download: file.dataUrl !== undefined ? file.name : undefined,
+                          target: file.dataUrl === undefined ? '_blank' : undefined,
+                          rel: 'noreferrer',
+                          onClick: (event) => event.stopPropagation(),
+                        },
                         '打开',
                       ),
                       h(
@@ -578,7 +624,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
  * @param props.onUpdate - apply a partial edit (status moves, priority, ...) to one task.
  * @param props.onDeleteTask - delete one task.
  */
-function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
+function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, onBack, onCreate, onUpdate, onDeleteTask }) {
   const [view, setView] = React.useState('list')
   const [editor, setEditor] = React.useState(null)
   const [query, setQuery] = React.useState('')
@@ -858,6 +904,8 @@ function SpaceView({ space, tasks, onBack, onCreate, onUpdate, onDeleteTask }) {
           task: editor.mode === 'edit' ? editingTask : undefined,
           initialStatus: editor.mode === 'create' ? editor.status : undefined,
           suggestions: assigneeOptions,
+          onUploadFile,
+          onDeleteAttachment,
           onClose: () => setEditor(null),
           onSubmit: submitEditor,
           onDelete:

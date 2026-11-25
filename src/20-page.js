@@ -127,8 +127,10 @@ function enabledModules(space) {
 
 /** The spaces workspace page. */
 function TaskSpacesPage() {
-  const [spaces, setSpaces] = React.useState(() => loadSpaces())
-  const [tasks, setTasks] = React.useState(() => loadTasks())
+  const [spaces, setSpaces] = React.useState([])
+  const [tasks, setTasks] = React.useState([])
+  const [loading, setLoading] = React.useState(true)
+  const [hostMode, setHostMode] = React.useState(false)
   const [openSpaceId, setOpenSpaceId] = React.useState(null)
   const [filter, setFilter] = React.useState('all')
   const [wizard, setWizard] = React.useState(null)
@@ -145,11 +147,90 @@ function TaskSpacesPage() {
     toastTimer.current = window.setTimeout(() => setToast(null), 3200)
   }, [])
 
-  /** Persist the task list (state + localStorage). */
-  const commitTasks = React.useCallback((next) => {
-    setTasks(next)
-    saveTasks(next)
+  /** Load the snapshot from the host half, migrating browser-era data once. */
+  React.useEffect(() => {
+    let alive = true
+    ;(async () => {
+      const state = await hostLoadState()
+      if (!alive) return
+      if (state === null) {
+        setSpaces(loadSpaces())
+        setTasks(loadTasks())
+        setHostMode(false)
+        setLoading(false)
+        return
+      }
+      const localSpaces = loadSpaces()
+      const localTasks = loadTasks()
+      const hosted = state.spaces.length > 0 || state.tasks.length > 0
+      if (!hosted && localSpaces.length > 0) {
+        // One-time migration of the browser-storage era onto the host.
+        setSpaces(localSpaces)
+        setTasks(localTasks)
+        setHostMode(true)
+        setLoading(false)
+        await hostSaveState(localSpaces, localTasks)
+        return
+      }
+      setSpaces(state.spaces)
+      setTasks(state.tasks)
+      setHostMode(true)
+      setLoading(false)
+    })()
+    return () => {
+      alive = false
+    }
   }, [])
+
+  /** Persist a snapshot: host when available, browser storage otherwise. */
+  const persist = React.useCallback(
+    (nextSpaces, nextTasks) => {
+      if (!hostMode) {
+        saveSpaces(nextSpaces)
+        saveTasks(nextTasks)
+        return
+      }
+      hostSaveState(nextSpaces, nextTasks).then((ok) => {
+        if (ok) return
+        setHostMode(false)
+        saveSpaces(nextSpaces)
+        saveTasks(nextTasks)
+        showToast('Host 存储写入失败，已回退到浏览器本地存储。')
+      })
+    },
+    [hostMode, showToast],
+  )
+
+  /** Update both collections and persist them together. */
+  const commitState = React.useCallback(
+    (nextSpaces, nextTasks) => {
+      setSpaces(nextSpaces)
+      setTasks(nextTasks)
+      persist(nextSpaces, nextTasks)
+    },
+    [persist],
+  )
+
+  /** Remove one attachment: host mode also deletes the stored file. */
+  const deleteAttachment = React.useCallback(
+    (file) => {
+      if (hostMode && file !== undefined && typeof file.id === 'string' && file.dataUrl === undefined) hostDeleteFile(file.id)
+    },
+    [hostMode],
+  )
+
+  /** Delete attachment files owned by removed tasks (host mode only). */
+  const dropAttachmentFiles = React.useCallback(
+    (removedTasks) => {
+      if (!hostMode) return
+      for (const task of removedTasks) {
+        for (const file of task.attachments ?? []) {
+          if (typeof file.id === 'string' && file.dataUrl === undefined) hostDeleteFile(file.id)
+        }
+      }
+    },
+    [hostMode],
+  )
 
   /** Create a task inside one space. */
   const createTask = React.useCallback(
@@ -170,17 +251,18 @@ function TaskSpacesPage() {
         createdAt: now,
         updatedAt: now,
       }
-      commitTasks([task, ...tasks])
+      commitState(spaces, [task, ...tasks])
       showToast(`任务「${task.title}」已创建。`)
     },
-    [tasks, commitTasks, showToast],
+    [spaces, tasks, commitState, showToast],
   )
 
   /** Apply a partial edit to one task (the board's drag move sends only `status`). */
   const updateTask = React.useCallback(
     (taskId, fields) => {
       const previous = tasks.find((task) => task.id === taskId)
-      commitTasks(
+      commitState(
+        spaces,
         tasks.map((task) => {
           if (task.id !== taskId) return task
           const next = { ...task, ...fields, updatedAt: Date.now() }
@@ -193,16 +275,18 @@ function TaskSpacesPage() {
       const moved = fields.status !== undefined && previous !== undefined && previous.status !== fields.status
       showToast(moved ? `任务已移动到「${fields.status}」。` : '任务已更新。')
     },
-    [tasks, commitTasks, showToast],
+    [spaces, tasks, commitState, showToast],
   )
 
   /** Delete one task. */
   const deleteTask = React.useCallback(
     (taskId) => {
-      commitTasks(tasks.filter((task) => task.id !== taskId))
+      const removed = tasks.find((task) => task.id === taskId)
+      if (removed !== undefined) dropAttachmentFiles([removed])
+      commitState(spaces, tasks.filter((task) => task.id !== taskId))
       showToast('任务已删除。')
     },
-    [tasks, commitTasks, showToast],
+    [spaces, tasks, commitState, dropAttachmentFiles, showToast],
   )
 
   /** Task count per space, for the list cards. */
@@ -265,26 +349,26 @@ function TaskSpacesPage() {
         multiAssignee: draft.multiAssignee === true,
         createdAt,
       }
-      const next = [space, ...spaces]
-      setSpaces(next)
-      saveSpaces(next)
+      commitState([space, ...spaces], tasks)
       setWizard(null)
       setFlashId(space.id)
       showToast(`空间「${space.name}」已创建。`)
     },
-    [spaces, showToast],
+    [spaces, tasks, commitState, showToast],
   )
 
   /** Delete one space after confirmation. */
   const deleteSpace = React.useCallback(() => {
     if (confirmSpace === null) return
-    const next = spaces.filter((space) => space.id !== confirmSpace.id)
-    setSpaces(next)
-    saveSpaces(next)
-    commitTasks(tasks.filter((task) => task.spaceId !== confirmSpace.id))
+    const removedTasks = tasks.filter((task) => task.spaceId === confirmSpace.id)
+    dropAttachmentFiles(removedTasks)
+    commitState(
+      spaces.filter((space) => space.id !== confirmSpace.id),
+      tasks.filter((task) => task.spaceId !== confirmSpace.id),
+    )
     setConfirmSpace(null)
     showToast(`已删除空间「${confirmSpace.name}」及其任务。`)
-  }, [confirmSpace, spaces, showToast, tasks, commitTasks])
+  }, [confirmSpace, spaces, showToast, tasks, commitState, dropAttachmentFiles])
 
   React.useEffect(() => {
     if (flashId === null) return
@@ -299,6 +383,24 @@ function TaskSpacesPage() {
   }
   const visible = spaces.filter((space) => (filter === 'all' ? true : filter === 'private' ? space.access === 'private' : space.access !== 'private'))
 
+  if (loading) {
+    return h(
+      'div',
+      { 'data-dsh-task-spaces': '', className: 'ts-page' },
+      h(
+        'div',
+        { className: 'ts-page-inner' },
+        h(
+          'div',
+          { className: 'ts-empty' },
+          h('span', { className: 'ts-empty-badge', 'aria-hidden': 'true' }, h(Icon, { name: 'sparkle', size: 22 })),
+          h('div', { className: 'ts-empty-title' }, '正在连接 Host 存储…'),
+          h('p', { className: 'ts-empty-desc' }, '空间、任务、评论和附件保存在本机 DSH 数据目录，清浏览器站点数据或换浏览器都不会丢。'),
+        ),
+      ),
+    )
+  }
+
   const openSpace = spaces.find((space) => space.id === openSpaceId)
   if (openSpace !== undefined) {
     return h(
@@ -307,6 +409,9 @@ function TaskSpacesPage() {
       h(SpaceView, {
         space: openSpace,
         tasks,
+        hostMode,
+        onUploadFile: hostMode ? hostUploadFile : undefined,
+        onDeleteAttachment: deleteAttachment,
         onBack: () => setOpenSpaceId(null),
         onCreate: (fields) => createTask(openSpace.id, fields),
         onUpdate: updateTask,
@@ -353,6 +458,7 @@ function TaskSpacesPage() {
           ],
         }),
         h('span', { className: 'ts-count' }, visible.length === 0 ? '还没有匹配的空间' : `共 ${visible.length} 个空间`),
+        h('span', { className: 'ts-chip', title: hostMode ? '数据保存在本机 DSH home 目录' : 'Host 不可用，退回浏览器本地存储' }, hostMode ? 'Host 持久化' : '本地模式'),
       ),
       spaces.length === 0
         ? h(EmptyState, { onCreate: startCreate })

@@ -82,6 +82,23 @@ check(
   'exports.apply / exports.inject',
 )
 
+const hostBundle = readFileSync(join(root, 'lib', 'index.js'), 'utf8')
+check(
+  'host half registers its HTTP routes',
+  /webServer\.register\(/.test(hostBundle) && /API_PREFIX/.test(hostBundle),
+  'lib/index.js must register /api/task-spaces routes',
+)
+check(
+  'host half guards loopback requests',
+  /isLoopbackPeer/.test(hostBundle) && /isSameOrigin/.test(hostBundle),
+  'loopback / same-origin fence',
+)
+check(
+  'client bundle talks to the host API',
+  /HOST_API_PREFIX = '\/api\/task-spaces'/.test(clientBundle) && /hostSaveState/.test(clientBundle),
+  'client must call the host state route',
+)
+
 /* ------------------------------------------------------------- patch file */
 
 let patch = ''

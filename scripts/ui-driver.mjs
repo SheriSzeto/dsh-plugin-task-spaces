@@ -207,6 +207,9 @@ try {
       const result = await client.send('Runtime.evaluate', { expression, awaitPromise: true, returnByValue: true })
       console.log(`[fill] ${step.selector} -> ${JSON.stringify(result.result?.value)}`)
       await sleep(step.ms ?? 350)
+    } else if (step.type === 'cdp') {
+      const result = await client.send(step.method, step.params ?? {})
+      console.log(`[cdp] ${step.method} ${JSON.stringify(result).slice(0, 120)}`)
     } else if (step.type === 'press') {
       await client.send('Input.dispatchKeyEvent', {
         type: 'keyDown',

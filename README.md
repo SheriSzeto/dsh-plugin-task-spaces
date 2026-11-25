@@ -13,7 +13,7 @@
 - **空间工作台**：空间卡片展示图标、名称、任务 ID 前缀（如 `ENG`）、工作类型、访问权限、工作流状态、标签、任务类型与功能模块；支持 `全部 / 公开 / 私有` 筛选、卡片菜单（复制设置新建 / 删除空间）和删除二次确认。
 - **任务管理**：点击空间卡片进入该空间的工作台，可以 **添加任务**（标题、描述、处理人、任务类型、状态、优先级、标签、附件），用 **列表 / 看板** 两种视图查看，看板按空间自己的工作流状态分列；**看板支持拖拽卡片改状态**（拖到目标列松手即可，列会高亮），点任务可编辑（含改状态、优先级、标签）或删除。空间卡片上实时显示任务数，删除空间会连带删除其任务。
 - **任务筛选**：工作台顶部可按 **关键词（标题/描述）、任务类型、优先级、标签、处理人** 组合筛选，列表与看板同时生效，计数显示为 `命中 / 总数`，一键「清除筛选」。
-- **处理人与附件**：每个任务可以指派处理人（输入成员或 Agent 名称，回车添加，输入过的名字会记住供下次选择；开启「多人处理人」的空间可指派多人），也可以添加附件（最多 5 个、单个 ≤ 1.5 MB，图片显示缩略图，可打开或移除）。列表行与看板卡片上会显示处理人头像和附件数量。
+- **处理人与附件**：每个任务可以指派处理人（输入成员或 Agent 名称，回车添加，输入过的名字会记住供下次选择；开启「多人处理人」的空间可指派多人），也可以添加附件（Host 模式下最多 10 个、单个 ≤ 20 MB；图片显示缩略图，可打开或移除）。列表行与看板卡片上会显示处理人头像和附件数量。
 - **任务评论**：任务弹窗里可以直接发表评论（支持 ⌘/Ctrl + Enter），评论人会被记住，评论**即时保存**、可删除；列表行与看板卡片显示评论数。评论随任务一起删除。
 - **五步创建向导**（`创建空间` 弹窗）：
 
@@ -30,7 +30,7 @@
   | 5. 权限与确认 | 组织内公开 / 私有、客户请求与多人处理人开关、完整配置摘要，最后「创建空间」 |
 
 - **反馈**：创建成功有 toast、新卡片闪光高亮；标识符冲突、名称为空等校验就地提示。
-- **持久化**：空间与任务都存在浏览器同源 `localStorage`（`dsh.task-spaces.v1` / `dsh.task-spaces.tasks.v1`），附件以 data URL 存在任务记录里，刷新页面、重启 Harness 都还在。
+- **Host 侧持久化**：空间 / 任务 / 评论 / 附件元数据由**插件宿主半侧**保存到本机 DSH 数据目录 `~/.dsh/task-spaces/data.json`，附件字节保存为真实文件 `~/.dsh/task-spaces/files/<id>`，浏览器通过同源 `/api/task-spaces/...` 读写。**清浏览器站点数据、换浏览器、重启 Harness 都不会丢**；Host 不可用时自动回退到 localStorage（页面顶部会显示「本地模式」）。首次加载会把旧版存在 localStorage 里的数据一次性迁移到 Host。
 
 ![空状态](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/empty-state.png)
 
@@ -79,7 +79,9 @@ dsh plugin --profile desktop add /Users/situxin/Documents/dsh
 dsh plugin --profile desktop remove dsh-plugin-task-spaces
 ```
 
-并把它从 profile `package.json` 的 `dsh.profile.bundles` 中移除。浏览器里已创建的空间数据仍保留在 localStorage，可手动清 `dsh.task-spaces.v1`。
+并把它从 profile `package.json` 的 `dsh.profile.bundles` 中移除。
+
+数据仍保留在本机 `~/.dsh/task-spaces/`（`data.json` + `files/`），重新安装后可直接继续用；彻底清理时手动删除该目录即可。
 
 ## 分发给其他人安装
 
@@ -157,7 +159,11 @@ npm run release   # 构建 + 校验 + 产出 dist/*.tgz
 
 ### 数据与隐私
 
-空间数据保存在**每个用户自己的浏览器** `localStorage`（同源），互不影响、也不回传服务器；换浏览器或清缓存会丢失。当前是前端原型，还没有 Host 侧持久化。
+数据保存在**每个用户自己的机器**上：宿主半侧写入 `~/.dsh/task-spaces/`（`data.json` 存空间/任务/评论与附件元数据，`files/<id>` 存附件字节），不经过任何外部服务器。宿主路由只监听回环地址（127.0.0.1），并拒绝非本机 socket 与跨站请求。
+
+- 清浏览器站点数据 / 换浏览器：**不丢**（数据在 Host 侧）
+- 换机器 / 重装系统：需要自行备份 `~/.dsh/task-spaces/`
+- Host 不可用（例如宿主版本过旧）：自动回退浏览器 `localStorage`（`dsh.task-spaces.v1` / `dsh.task-spaces.tasks.v1`），并显示「本地模式」
 
 ## 开发
 
@@ -173,14 +179,15 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 
 | 文件 | 职责 |
 | --- | --- |
-| `src/00-preface.js` | 图标、配色、工作类型/任务类型/模块/工作流预设等数据，localStorage 读写 |
+| `src/00-preface.js` | 图标、配色、工作类型/任务类型/模块/工作流预设等静态数据，以及本地存储读写工具 |
 | `src/05-styles.js` | 全部样式（只用 DSH 主题 token，跟随明暗主题），幂等注入 `<style>` |
 | `src/10-ui.js` | 本地 UI 小件：按钮、开关、分段控件、菜单、toast、确认弹层 |
 | `src/20-page.js` | 空间列表页（筛选、卡片、删除/复制入口）与任务状态管理 |
+| `src/15-host-client.js` | 宿主存储客户端：state 读写、附件上传/删除/URL |
 | `src/25-space-view.js` | 空间工作台：任务列表 / 看板、新建与编辑任务弹窗 |
 | `src/30-wizard.js` | 五步创建向导、状态/标签编辑器、权限与摘要 |
 | `src/40-apply.js` | 注册 `sidebar.panellist` 与 `main` 槽位 |
-| `lib/index.js` | 宿主半侧，纯 UI 插件故为空实现 |
+| `lib/index.js` | 宿主半侧：`~/.dsh/task-spaces/` 持久化 + `/api/task-spaces` 路由（state / 附件上传下载） |
 | `cordis.patch.yml` | 组合包 patch：把 `task-spaces` 行插入 profile |
 
 ### 槽位契约
@@ -194,13 +201,13 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 
 - 面向 `dsh-client-ui` 0.2.0-rc.2（DSH Desktop 2.0.10 自带运行时）开发并验证。
 - `dsh.client.inject` 声明了 UI 渲染、布局、侧边栏与语言包四个客户端包，保证 bundle 在它们之后加载。
-- 只读写浏览器 localStorage，不碰会话、不碰宿主文件；卸载干净。
+- 只读写自己的数据目录 `~/.dsh/task-spaces/`，不碰会话日志；HTTP 路由只接受本机回环请求。
 
 ## 已知限制（这是 UI 原型）
 
-- 空间与任务都是前端原型数据（localStorage），还没有 Host 半侧的持久化，也没有和 DSH 的 Session/Agent 执行打通；下一步可以给 `lib/index.js` 加 host 服务、用 storage 域落盘，并把任务派给 Agent 执行。
+- 数据已由 Host 持久化，但还没有和 DSH 的 Session/Agent 执行打通（任务不能派给 Agent 跑）；下一步是把任务与 Session 关联，让 Agent 处理并回写结果。
 - 多用户/成员/权限只是展示，没有真实的组织与鉴权；处理人与评论人都是自由文本，没有成员目录可选；评论还不支持 @提及、编辑和通知。
-- 附件保存在浏览器 localStorage 里（原型数据，受 ~5 MB 配额限制），换浏览器或清缓存会丢失；生产版本应该走 Host 侧文件存储。
+- 旧版本遗留的附件是 data URL 内联在 `data.json` 里（仍能打开，但会撑大状态文件）；新上传的附件是真实文件。附件没有做缩略图缓存/清理策略，孤儿文件需要手动清理。
 - 看板拖拽只支持「换状态」，同列内的手动排序还没做；状态本身也还不能在空间设置里改名/排序。
 
 ![确认摘要](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-summary.png)
