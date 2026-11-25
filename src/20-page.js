@@ -129,6 +129,10 @@ function TaskSpacesPage() {
   const [tasks, setTasks] = React.useState([])
   const [loading, setLoading] = React.useState(true)
   const [hostMode, setHostMode] = React.useState(false)
+  const [runs, setRuns] = React.useState([])
+  const [execMeta, setExecMeta] = React.useState({ presets: [], workspaces: [], presetError: null })
+  const announcedRuns = React.useRef(new Set())
+  const runsBaseline = React.useRef(false)
   const [openSpaceId, setOpenSpaceId] = React.useState(null)
   const [wizard, setWizard] = React.useState(null)
   const [flashId, setFlashId] = React.useState(null)
@@ -180,6 +184,65 @@ function TaskSpacesPage() {
       alive = false
     }
   }, [])
+
+  /** Poll the host run ledger while the page is open. */
+  React.useEffect(() => {
+    if (!hostMode) return undefined
+    let alive = true
+    const tick = async () => {
+      const next = await hostListRuns()
+      if (!alive || next === null) return
+      setRuns(next)
+    }
+    tick()
+    const timer = window.setInterval(tick, 4000)
+    return () => {
+      alive = false
+      window.clearInterval(timer)
+    }
+  }, [hostMode])
+
+  /** Load the agent/workspace roster once the host is available. */
+  React.useEffect(() => {
+    if (!hostMode) return undefined
+    let alive = true
+    hostLoadMeta().then((meta) => {
+      if (alive && meta !== null) setExecMeta(meta)
+    })
+    return () => {
+      alive = false
+    }
+  }, [hostMode])
+
+  /** Dispatch one task to an agent session. */
+  const runTask = React.useCallback(
+    async (taskId, options) => {
+      try {
+        const run = await hostRunTask(taskId, options)
+        setRuns((current) => [run, ...current.filter((entry) => entry.id !== run.id)])
+        showToast(run.status === 'failed' ? `启动失败：${run.error ?? ''}` : '已交给 Agent 执行。')
+        return run
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : '启动执行失败。')
+        return null
+      }
+    },
+    [showToast],
+  )
+
+  /** Cancel one running execution. */
+  const cancelRun = React.useCallback(
+    async (runId) => {
+      try {
+        const run = await hostCancelRun(runId)
+        setRuns((current) => current.map((entry) => (entry.id === run.id ? run : entry)))
+        showToast('已请求取消执行。')
+      } catch (error) {
+        showToast(error instanceof Error ? error.message : '取消失败。')
+      }
+    },
+    [showToast],
+  )
 
   /** Persist a snapshot: host when available, browser storage otherwise. */
   const persist = React.useCallback(
@@ -276,6 +339,36 @@ function TaskSpacesPage() {
     },
     [spaces, tasks, commitState, showToast],
   )
+
+  /** Turn a finished run into one progress record on its task (client is the only state writer). */
+  const recordRunProgress = React.useCallback(
+    (run) => {
+      const task = tasks.find((entry) => entry.id === run.taskId)
+      if (task === undefined) return
+      const headline = run.status === 'succeeded' ? 'Agent 执行完成' : run.status === 'failed' ? 'Agent 执行失败' : 'Agent 执行已取消'
+      const detail = (run.status === 'succeeded' ? run.output : run.error ?? run.output ?? '').trim()
+      const body = detail === '' ? headline + '。' : `${headline}：\n${detail.slice(0, 1500)}`
+      const comment = { id: newTaskId(), author: 'Agent', body, createdAt: Date.now(), runId: run.id }
+      updateTask(run.taskId, { comments: [...(task.comments ?? []), comment] })
+    },
+    [tasks, updateTask],
+  )
+
+  /** Announce finished runs once: the first poll is a baseline, not new work. */
+  React.useEffect(() => {
+    if (!hostMode) return
+    if (!runsBaseline.current) {
+      if (runs.length === 0) return
+      for (const run of runs) announcedRuns.current.add(run.id)
+      runsBaseline.current = true
+      return
+    }
+    for (const run of runs) {
+      if (run.status === 'running' || announcedRuns.current.has(run.id)) continue
+      announcedRuns.current.add(run.id)
+      recordRunProgress(run)
+    }
+  }, [runs, hostMode, recordRunProgress])
 
   /** Delete one task. */
   const deleteTask = React.useCallback(
@@ -399,6 +492,11 @@ function TaskSpacesPage() {
         hostMode,
         onUploadFile: hostMode ? hostUploadFile : undefined,
         onDeleteAttachment: deleteAttachment,
+        hostMode,
+        runs,
+        execMeta,
+        onRunTask: runTask,
+        onCancelRun: cancelRun,
         onBack: () => setOpenSpaceId(null),
         onCreate: (fields) => createTask(openSpace.id, fields),
         onUpdate: updateTask,

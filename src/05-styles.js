@@ -779,6 +779,58 @@ const TASK_SPACES_CSS = `
 
 .ts-comment-count { display: inline-flex; align-items: center; gap: 3px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 
+/* -------------------------------------------------------- agent execution */
+
+.ts-run-badge {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px;
+  border-radius: 5px; font-size: 11px; font-weight: 550;
+  color: var(--ts-accent); background: var(--ts-accent-soft);
+  border: 0.5px solid var(--ts-accent-border);
+}
+.ts-run-badge .ts-run-pulse {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--ts-accent);
+  animation: ts-run-pulse 1.2s ease-in-out infinite;
+}
+@keyframes ts-run-pulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+
+.ts-exec-controls { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ts-exec-controls .ts-select { width: auto; min-width: 130px; flex: 0 0 auto; }
+
+.ts-run-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.ts-run-item {
+  display: flex; flex-direction: column; gap: 6px; padding: 9px 11px;
+  border-radius: 10px; border: 0.5px solid var(--ts-border);
+  border-left: 2.5px solid var(--ts-border-strong);
+  background: var(--dsw-alias-bg-base);
+}
+.ts-run-item[data-status="running"] { border-left-color: var(--ts-accent); }
+.ts-run-item[data-status="succeeded"] { border-left-color: var(--dsw-alias-state-success-primary, #3fa56e); }
+.ts-run-item[data-status="failed"] { border-left-color: var(--dsw-alias-state-error-primary); }
+.ts-run-item[data-status="cancelled"] { border-left-color: var(--dsw-alias-state-idle-primary, #8b8f98); }
+.ts-run-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ts-run-status {
+  display: inline-flex; align-items: center; gap: 4px; height: 20px; padding: 0 7px;
+  border-radius: 5px; font-size: 11px; font-weight: 550;
+  color: var(--dsw-alias-label-secondary); background: var(--ts-soft); border: 0.5px solid var(--ts-border);
+}
+.ts-run-item[data-status="running"] .ts-run-status { color: var(--ts-accent); background: var(--ts-accent-soft); border-color: var(--ts-accent-border); }
+.ts-run-item[data-status="succeeded"] .ts-run-status { color: var(--dsw-alias-state-success-primary, #3fa56e); }
+.ts-run-item[data-status="failed"] .ts-run-status { color: var(--dsw-alias-state-error-primary); }
+.ts-run-meta { color: var(--dsw-alias-label-secondary); font-size: 11px; }
+.ts-run-cancel { margin-left: auto; }
+.ts-run-output {
+  margin: 0; padding: 8px 10px; border-radius: 8px; max-height: 200px; overflow: auto;
+  background: var(--ts-soft); color: var(--dsw-alias-label-primary);
+  font-family: inherit; font-size: 12px; line-height: 1.55; white-space: pre-wrap; word-break: break-word;
+}
+.ts-run-error { color: var(--dsw-alias-state-error-primary); font-size: 12px; line-height: 1.5; }
+.ts-run-expand {
+  appearance: none; align-self: flex-start; border: 0; background: transparent; padding: 0;
+  color: var(--dsw-alias-label-secondary); font-family: inherit; font-size: 11.5px; cursor: pointer;
+}
+.ts-run-expand:hover { color: var(--dsw-alias-label-primary); }
+.ts-run-empty { color: var(--dsw-alias-label-secondary); font-size: 12px; }
+
 /* ------------------------------------------------------------ task editor */
 
 .ts-task-dialog {

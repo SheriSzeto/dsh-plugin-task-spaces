@@ -15,6 +15,7 @@
 - **任务筛选**：工作台顶部可按 **关键词（标题/描述）、任务类型、优先级、标签、执行者** 组合筛选，列表与看板同时生效，计数显示为 `命中 / 总数`，一键「清除筛选」。
 - **执行者与附件**：每个任务有一个**执行者**（输入「我」或 Agent 名称，回车添加，输入过的名字会被记住；再填会替换原来的），也可以添加附件（Host 模式下最多 10 个、单个 ≤ 20 MB；图片显示缩略图，可打开或移除）。列表行与看板卡片显示执行者头像和附件数量。
 - **进展记录**：任务弹窗里可以直接记录进展（支持 ⌘/Ctrl + Enter），记录人会被记住，记录**即时保存**、可删除；列表行与看板卡片显示记录条数。进展随任务一起删除。
+- **Agent 执行（接 DSH Session）**：任务弹窗里可以选 Agent 预设和工作区，一键**交给 Agent 执行**——Host 会在 DSH 里创建真实会话、把任务（标题 + 描述 + 类型/标签）发给它，并轮询执行状态；执行记录（执行中 / 已完成 / 失败 / 已取消，输出摘要与错误）显示在任务里，运行中可以取消。执行完成或失败后，会自动往任务的**进展记录**写一条结果（页面打开时）。
 - **五步创建向导**（`创建空间` 弹窗）：
 
   ![工作方向](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/create-space-step1.png)
@@ -30,7 +31,7 @@
   | 5. 确认 | 配置摘要（任务类型、模块、工作流、标签、执行方式），最后「创建空间」 |
 
 - **反馈**：创建成功有 toast、新卡片闪光高亮；标识符冲突、名称为空等校验就地提示。
-- **Host 侧持久化**：空间 / 任务 / 进展记录 / 附件元数据由**插件宿主半侧**保存到本机 DSH 数据目录 `~/.dsh/task-spaces/data.json`，附件字节保存为真实文件 `~/.dsh/task-spaces/files/<id>`，浏览器通过同源 `/api/task-spaces/...` 读写。**清浏览器站点数据、换浏览器、重启 Harness 都不会丢**；Host 不可用时自动回退到 localStorage（页面顶部会显示「本地模式」）。首次加载会把旧版存在 localStorage 里的数据一次性迁移到 Host。
+- **Host 侧持久化**：空间 / 任务 / 进展记录 / 附件元数据由**插件宿主半侧**保存到本机 DSH 数据目录 `~/.dsh/task-spaces/data.json`，附件字节保存为真实文件 `~/.dsh/task-spaces/files/<id>`，执行记录保存在 `~/.dsh/task-spaces/runs.json`，浏览器通过同源 `/api/task-spaces/...` 读写。**清浏览器站点数据、换浏览器、重启 Harness 都不会丢**；Host 不可用时自动回退到 localStorage（页面顶部会显示「本地模式」）。首次加载会把旧版存在 localStorage 里的数据一次性迁移到 Host。
 
 ![空状态](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/empty-state.png)
 
@@ -45,6 +46,8 @@
 ![执行者与附件](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-assignee-attachment.png)
 
 ![进展记录](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-comments.png)
+
+![Agent 执行](https://raw.githubusercontent.com/SheriSzeto/dsh-plugin-task-spaces/main/assets/task-execution.png)
 
 ## 安装
 
@@ -159,7 +162,9 @@ npm run release   # 构建 + 校验 + 产出 dist/*.tgz
 
 ### 数据与隐私
 
-数据保存在**每个用户自己的机器**上：宿主半侧写入 `~/.dsh/task-spaces/`（`data.json` 存空间/任务/进展记录与附件元数据，`files/<id>` 存附件字节），不经过任何外部服务器。宿主路由只监听回环地址（127.0.0.1），并拒绝非本机 socket 与跨站请求。
+数据保存在**每个用户自己的机器**上：宿主半侧写入 `~/.dsh/task-spaces/`（`data.json` 存空间/任务/进展记录与附件元数据，`files/<id>` 存附件字节，`runs.json` 存执行记录），不经过任何外部服务器。宿主路由只监听回环地址（127.0.0.1），并拒绝非本机 socket 与跨站请求。
+
+Agent 执行会在本机 DSH 里创建真实会话（会话本身由 DSH 管理，消耗所配置模型的额度）；执行时发送的 prompt 就是任务标题、描述、类型和标签，不额外上传附件内容。
 
 - 清浏览器站点数据 / 换浏览器：**不丢**（数据在 Host 侧）
 - 换机器 / 重装系统：需要自行备份 `~/.dsh/task-spaces/`
@@ -183,11 +188,11 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 | `src/05-styles.js` | 全部样式（只用 DSH 主题 token，跟随明暗主题），幂等注入 `<style>` |
 | `src/10-ui.js` | 本地 UI 小件：按钮、开关、分段控件、菜单、toast、确认弹层 |
 | `src/20-page.js` | 空间列表页（筛选、卡片、删除/复制入口）与任务状态管理 |
-| `src/15-host-client.js` | 宿主存储客户端：state 读写、附件上传/删除/URL |
+| `src/15-host-client.js` | 宿主客户端：state 读写、附件上传/删除/URL、执行元数据/运行/取消 |
 | `src/25-space-view.js` | 空间工作台：任务列表 / 看板、新建与编辑任务弹窗 |
 | `src/30-wizard.js` | 五步创建向导、状态/标签编辑器、确认摘要 |
 | `src/40-apply.js` | 注册 `sidebar.panellist` 与 `main` 槽位 |
-| `lib/index.js` | 宿主半侧：`~/.dsh/task-spaces/` 持久化 + `/api/task-spaces` 路由（state / 附件上传下载） |
+| `lib/index.js` | 宿主半侧：`~/.dsh/task-spaces/` 持久化、`/api/task-spaces` 路由，以及基于 DSH Session 的 Agent 执行器与运行轮询 |
 | `cordis.patch.yml` | 组合包 patch：把 `task-spaces` 行插入 profile |
 
 ### 槽位契约
@@ -206,7 +211,9 @@ bundle 的唯一内容是 `window.__ModuleLoader__.load({ id, factory })`，`fac
 ## 已知限制
 
 - **定位是个人工作流**：不做团队/成员/权限/共享；数据只在本机、单人使用，换机器需要手动备份 `~/.dsh/task-spaces/`。
-- 还没有和 DSH 的 Session/Agent 执行打通：执行者目前是一个名字标签，任务不能真的派给 Agent 跑；下一步是把任务与 Session 关联，让 Agent 处理并回写结果。
+- Agent 执行需要本机已配置可用的模型（DSH 的 Models 设置或 `DEEPSEEK_API_KEY`），执行会消耗额度；没有配置时任务会被标记为失败并显示原因。
+- 每次执行创建一个新的 DSH 会话，暂不支持「在同一会话里继续追问」；任务里的执行者名字是标签，真正的执行者是所选 Agent 预设。
+- 结果写回进展记录依赖页面打开时的轮询；页面关着时执行仍会继续并记录在 `runs.json`，但不会自动补一条进展。
 - 执行者与记录人都是自由文本，没有真正的成员/Agent 目录可选；进展记录还不支持 @提及和通知。
 - 旧版本遗留的附件是 data URL 内联在 `data.json` 里（仍能打开，但会撑大状态文件）；新上传的附件是真实文件。附件没有做缩略图缓存/清理策略，孤儿文件需要手动清理。
 - 看板拖拽只支持「换状态」，同列内的手动排序还没做；状态本身也还不能在空间设置里改名/排序。

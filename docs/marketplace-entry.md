@@ -103,6 +103,9 @@ config, and delete confirmation.
   over loopback-only `/api/task-spaces` routes.
 - Personal, single-user workflow: data stays on the user's machine and survives clearing browser
   site data; when the host half is unavailable the client falls back to `localStorage`.
+- Tasks can be dispatched to a real DSH agent session from the task dialog (agent preset + optional
+  workspace); run status/output is shown on the task, can be cancelled, and a result is appended to
+  the task's progress log.
 - Verified on DSH Desktop 2.0.10 / dsh 0.2.0-rc.2: installed from a packed tarball into a
   clean profile, created spaces end to end.
 - Entry file: `data/plugins/SheriSzeto__dsh-plugin-task-spaces.yml` (this is the only file touched).

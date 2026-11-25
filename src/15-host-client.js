@@ -103,3 +103,53 @@ async function hostDeleteFile(id) {
 function hostFileUrl(id) {
   return `${HOST_API_PREFIX}/files/${encodeURIComponent(id)}`
 }
+
+/* ---------------------------------------------------- agent execution (host) */
+
+/** Read agent presets and registered workspaces the run dialog can offer. */
+async function hostLoadMeta() {
+  try {
+    const response = await hostRequest('/meta')
+    if (!response.ok) return { presets: [], workspaces: [], presetError: `HTTP ${response.status}` }
+    const parsed = await response.json()
+    return {
+      presets: Array.isArray(parsed.presets) ? parsed.presets : [],
+      workspaces: Array.isArray(parsed.workspaces) ? parsed.workspaces : [],
+      presetError: typeof parsed.presetError === 'string' ? parsed.presetError : null,
+    }
+  } catch {
+    return { presets: [], workspaces: [], presetError: '无法连接 Host 执行服务' }
+  }
+}
+
+/** Read every execution run (host-authored ledger). */
+async function hostListRuns() {
+  try {
+    const response = await hostRequest('/runs')
+    if (!response.ok) return null
+    const parsed = await response.json()
+    return Array.isArray(parsed.runs) ? parsed.runs : []
+  } catch {
+    return null
+  }
+}
+
+/** Ask the host to run one task through an agent session. */
+async function hostRunTask(taskId, options) {
+  const response = await hostRequest(`/tasks/${encodeURIComponent(taskId)}/run`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(options ?? {}),
+  })
+  const parsed = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(parsed !== null && typeof parsed.error === 'string' ? parsed.error : `启动执行失败（HTTP ${response.status}）`)
+  return parsed
+}
+
+/** Cancel one running execution. */
+async function hostCancelRun(runId) {
+  const response = await hostRequest(`/runs/${encodeURIComponent(runId)}/cancel`, { method: 'POST' })
+  const parsed = await response.json().catch(() => null)
+  if (!response.ok) throw new Error(parsed !== null && typeof parsed.error === 'string' ? parsed.error : `取消失败（HTTP ${response.status}）`)
+  return parsed
+}

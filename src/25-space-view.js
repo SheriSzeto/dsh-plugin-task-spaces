@@ -40,7 +40,7 @@ function AvatarStack({ names }) {
 }
 
 /** One task row in the list view. */
-function TaskRow({ space, task, onOpen }) {
+function TaskRow({ space, task, onOpen, running }) {
   const status = resolveStatus(space, task.status)
   const priority = priorityOf(task.priority)
   return h(
@@ -55,6 +55,7 @@ function TaskRow({ space, task, onOpen }) {
         'span',
         { className: 'ts-task-sub' },
         h('span', { className: 'ts-chip' }, taskTypeName(task.type)),
+        running ? h('span', { className: 'ts-run-badge' }, h('span', { className: 'ts-run-pulse' }), '执行中') : null,
         task.labels.map((label) => h('span', { key: label, className: 'ts-label-chip' }, label)),
       ),
     ),
@@ -81,7 +82,7 @@ function TaskRow({ space, task, onOpen }) {
 }
 
 /** One task card in the board view; drag it to another column to change status. */
-function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
+function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd, running }) {
   const priority = priorityOf(task.priority)
   return h(
     'button',
@@ -100,6 +101,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
       'span',
       { className: 'ts-board-card-meta' },
       h('span', { className: 'ts-chip' }, taskTypeName(task.type)),
+      running ? h('span', { className: 'ts-run-badge' }, h('span', { className: 'ts-run-pulse' }), '执行中') : null,
       priority.color === null ? null : h(
         'span',
         { className: 'ts-priority', 'data-priority': priority.id },
@@ -137,7 +139,7 @@ function TaskCard({ space, task, onOpen, dragging, onDragStart, onDragEnd }) {
  * @param props.onSubmit - receives the edited field set.
  * @param props.onDelete - delete the edited task (edit mode only).
  */
-function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete, onAddComment, onDeleteComment, onUploadFile, onDeleteAttachment }) {
+function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit, onDelete, onAddComment, onDeleteComment, onUploadFile, onDeleteAttachment, hostMode, execMeta, taskRuns, onRunTask, onCancelRun }) {
   const isEdit = task !== undefined
   const [title, setTitle] = React.useState(isEdit ? task.title : '')
   const [description, setDescription] = React.useState(isEdit ? task.description : '')
@@ -171,6 +173,25 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
   const [commentAuthor, setCommentAuthor] = React.useState(() => loadCommentAuthor() || '我')
   const [commentBody, setCommentBody] = React.useState('')
   const commentCount = isEdit ? task.comments.length : 0
+  const [presetId, setPresetId] = React.useState('')
+  const [workspaceId, setWorkspaceId] = React.useState('')
+  const [dispatching, setDispatching] = React.useState(false)
+  const [expandedRuns, setExpandedRuns] = React.useState({})
+  const runningRun = (taskRuns ?? []).find((run) => run.status === 'running')
+
+  /** Dispatch this task to an agent session via the host. */
+  const dispatchRun = async () => {
+    if (typeof onRunTask !== 'function' || runningRun !== undefined || dispatching) return
+    setDispatching(true)
+    try {
+      await onRunTask(task.id, {
+        ...(presetId === '' ? {} : { agentPreset: presetId }),
+        ...(workspaceId === '' ? {} : { workspaceId }),
+      })
+    } finally {
+      setDispatching(false)
+    }
+  }
 
   /** Post one comment immediately (comments are not part of the field draft). */
   const submitComment = () => {
@@ -462,7 +483,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
               attachments.length > 0 ? h('span', { className: 'ts-field-hint' }, `已添加 ${attachments.length} 个`) : null,
             ),
             attachments.length === 0
-              ? h('span', { className: 'ts-field-hint' }, '附件保存在浏览器本地（原型数据），刷新后仍在。')
+              ? h('span', { className: 'ts-field-hint' }, hostUpload ? '附件保存在本机 DSH 数据目录（Host 侧）。' : 'Host 不可用，附件暂存在浏览器本地。')
               : h(
                   'div',
                   { className: 'ts-attach-list' },
@@ -510,6 +531,124 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
                 ),
             attachError.length > 0 ? h('span', { className: 'ts-attach-error' }, attachError) : null,
           ),
+          isEdit
+            ? h(
+                'div',
+                { className: 'ts-field' },
+                h(
+                  'span',
+                  { className: 'ts-field-label' },
+                  h('span', null, 'Agent 执行'),
+                  h('span', { className: 'ts-field-hint' }, hostMode ? (runningRun === undefined ? '交给 Agent 完成这个任务' : 'Agent 正在执行…') : '本地模式不可用'),
+                ),
+                hostMode
+                  ? h(
+                      React.Fragment,
+                      null,
+                      h(
+                        'div',
+                        { className: 'ts-exec-controls' },
+                        h(
+                          'select',
+                          {
+                            className: 'ts-select',
+                            value: presetId,
+                            'aria-label': 'Agent 预设',
+                            disabled: runningRun !== undefined || dispatching,
+                            onChange: (event) => setPresetId(event.target.value),
+                          },
+                          h('option', { value: '' }, '默认 Agent'),
+                          (execMeta?.presets ?? []).map((preset) =>
+                            h('option', { key: preset.id, value: preset.id, disabled: preset.broken !== undefined }, preset.broken === undefined ? preset.name : `${preset.name}（不可用）`),
+                          ),
+                        ),
+                        h(
+                          'select',
+                          {
+                            className: 'ts-select',
+                            value: workspaceId,
+                            'aria-label': '工作区',
+                            disabled: runningRun !== undefined || dispatching,
+                            onChange: (event) => setWorkspaceId(event.target.value),
+                          },
+                          h('option', { value: '' }, '不指定工作区'),
+                          (execMeta?.workspaces ?? []).map((workspace) => h('option', { key: workspace.id, value: workspace.id }, workspace.title)),
+                        ),
+                        h(
+                          Btn,
+                          { kind: 'primary', icon: 'rocket', disabled: runningRun !== undefined || dispatching, onClick: dispatchRun },
+                          dispatching ? '启动中…' : runningRun === undefined ? '交给 Agent 执行' : '执行中…',
+                        ),
+                      ),
+                      execMeta?.presetError !== null && execMeta?.presetError !== undefined
+                        ? h('span', { className: 'ts-field-error' }, `Agent 列表不可用：${execMeta.presetError}`)
+                        : null,
+                      h('span', { className: 'ts-field-hint' }, '执行会消耗模型额度；结果会写回任务的进展记录（前提是页面打开着）。'),
+                      (taskRuns ?? []).length === 0
+                        ? h('span', { className: 'ts-run-empty' }, '还没有执行记录。')
+                        : h(
+                            'div',
+                            { className: 'ts-run-list' },
+                            [...(taskRuns ?? [])]
+                              .sort((left, right) => right.startedAt - left.startedAt)
+                              .map((run) => {
+                                const label =
+                                  run.status === 'running'
+                                    ? '执行中'
+                                    : run.status === 'succeeded'
+                                      ? '已完成'
+                                      : run.status === 'failed'
+                                        ? '失败'
+                                        : '已取消'
+                                const output = typeof run.output === 'string' ? run.output : ''
+                                const expanded = expandedRuns[run.id] === true
+                                const shown = expanded || output.length <= 320 ? output : `${output.slice(0, 320)}…`
+                                return h(
+                                  'div',
+                                  { key: run.id, className: 'ts-run-item', 'data-status': run.status },
+                                  h(
+                                    'div',
+                                    { className: 'ts-run-head' },
+                                    h('span', { className: 'ts-run-status' }, label),
+                                    h('span', { className: 'ts-run-meta' }, `${relativeTime(run.startedAt)} · ${run.agentPreset === undefined ? '默认 Agent' : run.agentPreset}`),
+                                    run.status === 'running'
+                                      ? h(
+                                          Btn,
+                                          {
+                                            kind: 'ghost',
+                                            className: 'ts-run-cancel',
+                                            onClick: () => {
+                                              if (typeof onCancelRun === 'function') onCancelRun(run.id)
+                                            },
+                                          },
+                                          '取消',
+                                        )
+                                      : null,
+                                  ),
+                                  run.error !== undefined && run.error !== ''
+                                    ? h('span', { className: 'ts-run-error' }, run.error)
+                                    : null,
+                                  shown !== ''
+                                    ? h('pre', { className: 'ts-run-output' }, shown)
+                                    : null,
+                                  output.length > 320
+                                    ? h(
+                                        'button',
+                                        {
+                                          type: 'button',
+                                          className: 'ts-run-expand',
+                                          onClick: () => setExpandedRuns((current) => ({ ...current, [run.id]: !expanded })),
+                                        },
+                                        expanded ? '收起' : '展开全文',
+                                      )
+                                    : null,
+                                )
+                              }),
+                          ),
+                    )
+                  : null,
+              )
+            : null,
           isEdit
             ? h(
                 'div',
@@ -622,7 +761,7 @@ function TaskEditor({ space, task, initialStatus, suggestions, onClose, onSubmit
  * @param props.onUpdate - apply a partial edit (status moves, priority, ...) to one task.
  * @param props.onDeleteTask - delete one task.
  */
-function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, onBack, onCreate, onUpdate, onDeleteTask }) {
+function SpaceView({ space, tasks, hostMode, runs, execMeta, onRunTask, onCancelRun, onUploadFile, onDeleteAttachment, onBack, onCreate, onUpdate, onDeleteTask }) {
   const [view, setView] = React.useState('list')
   const [editor, setEditor] = React.useState(null)
   const [query, setQuery] = React.useState('')
@@ -638,6 +777,9 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
     .sort((left, right) => right.createdAt - left.createdAt)
   const typeChoices = ['task', ...space.taskTypes.filter((id) => id !== 'task')]
   const assigneeOptions = Array.from(new Set(spaceTasks.flatMap((task) => task.assignees))).sort((left, right) => left.localeCompare(right, 'zh-Hans-CN'))
+  const runningTaskIds = new Set(
+    (Array.isArray(runs) ? runs : []).filter((run) => run.status === 'running').map((run) => run.taskId),
+  )
 
   const filtersActive =
     query.trim().length > 0 || typeFilter !== 'all' || priorityFilter !== 'all' || labelFilter !== 'all' || assigneeFilter !== 'all'
@@ -830,7 +972,9 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
             ? h(
                 'div',
                 { className: 'ts-task-list' },
-                visibleTasks.map((task) => h(TaskRow, { key: task.id, space, task, onOpen: () => openEdit(task) })),
+                visibleTasks.map((task) =>
+                  h(TaskRow, { key: task.id, space, task, running: runningTaskIds.has(task.id), onOpen: () => openEdit(task) }),
+                ),
               )
             : h(
                 'div',
@@ -881,6 +1025,7 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
                             space,
                             task,
                             dragging: draggingId === task.id,
+                            running: runningTaskIds.has(task.id),
                             onDragStart: startDrag(task),
                             onDragEnd: endDrag,
                             onOpen: () => openEdit(task),
@@ -903,6 +1048,11 @@ function SpaceView({ space, tasks, hostMode, onUploadFile, onDeleteAttachment, o
           suggestions: assigneeOptions,
           onUploadFile,
           onDeleteAttachment,
+          hostMode,
+          execMeta,
+          taskRuns: (Array.isArray(runs) ? runs : []).filter((run) => run.taskId === editingTask.id),
+          onRunTask,
+          onCancelRun,
           onClose: () => setEditor(null),
           onSubmit: submitEditor,
           onDelete:
